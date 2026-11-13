@@ -37,6 +37,12 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     /** Called after each move that changed the board (not per frame). */
     var onMoved: (() -> Unit)? = null
 
+    /**
+     * Asked before every move, including queued ones. Returning false refuses the move.
+     * This is how a clock or a move budget stops play at exactly the right moment.
+     */
+    var moveGate: (() -> Boolean)? = null
+
     var inputEnabled: Boolean = true
 
     var palette: BoardPalette = BoardPalette.LIGHT
@@ -56,6 +62,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     private val dest = IntArray(MAX_CELLS)
     private val merged = BooleanArray(MAX_CELLS)
     private var spawnIndex = -1
+    private var shownVersion = 0
 
     /** True while tiles are moving. When false the view requests no frames. */
     var isAnimating = false
@@ -113,6 +120,21 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
             intro = true
             startAnimation()
         }
+        invalidate()
+    }
+
+    /**
+     * Redraws from the game after it changed without a swipe (an undo). [version] is any
+     * counter that changes when that happens; repeating the same value does nothing.
+     */
+    fun showVersion(version: Int) {
+        if (version == shownVersion) return
+        shownVersion = version
+        val g = game ?: return
+        g.copyCellsInto(cur)
+        queued = 0
+        intro = false
+        isAnimating = false
         invalidate()
     }
 
@@ -183,6 +205,11 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
 
     private fun applyMove(dir: Direction): Boolean {
         val g = game ?: return false
+        val gate = moveGate
+        if (gate != null && !gate()) {
+            queued = 0
+            return false
+        }
         g.copyCellsInto(prev)
         if (g.move(dir) == Rules.NO_MOVE) return false
         g.copyCellsInto(cur)

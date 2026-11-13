@@ -1,7 +1,6 @@
 package io.github.camilus123.game4096.data
 
 import android.content.Context
-import io.github.camilus123.game4096.core.Game
 import io.github.camilus123.game4096.core.SaveCodec
 import io.github.camilus123.game4096.core.SavedGame
 import io.github.camilus123.game4096.core.ScoreEntry
@@ -60,8 +59,7 @@ class Storage(context: Context) {
 
     fun hasGame(key: GameKey): Boolean = loadGame(key) != null
 
-    fun saveGame(key: GameKey, game: Game, winAcknowledged: Boolean) {
-        val saved = SavedGame(game.snapshot(), game.historySnapshot().takeLast(MAX_SAVED_UNDO), winAcknowledged)
+    fun saveGame(key: GameKey, saved: SavedGame) {
         val id = key.id
         saveCache[id] = saved
         io.execute { saves.edit().putString(id, SaveCodec.encode(saved)).commit() }
@@ -105,6 +103,13 @@ class Storage(context: Context) {
             session.edit().putInt(KEY_GRID, value).apply()
         }
 
+    /** Id of the rules last chosen in the menu (see GameRules.id). */
+    var lastRulesId: String?
+        get() = session.getString(KEY_RULES, null)
+        set(value) {
+            session.edit().putString(KEY_RULES, value).apply()
+        }
+
     /** Blocks until every queued write is on disk. For tests and for leaving the app. */
     fun flush() {
         io.submit {}.get(5, TimeUnit.SECONDS)
@@ -113,7 +118,7 @@ class Storage(context: Context) {
     companion object {
         private const val KEY_ACTIVE = "active_game"
         private const val KEY_GRID = "grid_size"
-        private const val MAX_SAVED_UNDO = 200
+        private const val KEY_RULES = "rules"
 
         @Volatile private var instance: Storage? = null
 

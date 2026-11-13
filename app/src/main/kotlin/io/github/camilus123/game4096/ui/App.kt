@@ -9,6 +9,8 @@ import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.lifecycle.viewmodel.compose.viewModel
 import io.github.camilus123.game4096.game.GameViewModel
 import io.github.camilus123.game4096.game.Screen
@@ -16,6 +18,10 @@ import io.github.camilus123.game4096.game.Screen
 @Composable
 fun App(vm: GameViewModel = viewModel()) {
     val dark = isSystemInDarkTheme()
+
+    // The Time attack clock runs only while the app is on screen.
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.setForeground(true) }
+    LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { vm.setForeground(false) }
 
     GameTheme(dark) {
         Box(
@@ -35,8 +41,10 @@ fun App(vm: GameViewModel = viewModel()) {
                 }
                 Screen.MENU -> MenuScreen(
                     gridSize = vm.gridSize,
-                    hasSavedGame = vm.hasSavedGame(vm.gridSize),
+                    rules = vm.rules,
+                    hasSavedGame = vm.hasSavedGame(vm.gridSize, vm.rules),
                     onGridSize = vm::selectGrid,
+                    onRules = vm::selectRules,
                     onPlay = vm::play,
                     onScores = vm::showScores,
                 )

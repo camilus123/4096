@@ -67,13 +67,30 @@ class SaveCodecTest {
         assertEquals(5, back.state.cells[3])
     }
 
+    @Test fun extraNumberSurvives() {
+        val game = Game.new(4, 1)
+        assertEquals(123_456L, SaveCodec.decode(SaveCodec.encode(game, false, extra = 123_456L))!!.extra)
+        assertEquals(0L, SaveCodec.decode(SaveCodec.encode(game, false))!!.extra)
+    }
+
+    @Test fun versionOneSavesAreStillRead() {
+        val v1 = "1;4;1;40,7,-99,0 1 0 0 0 0 2 0 0 0 0 0 0 0 0 3"
+        val saved = SaveCodec.decode(v1)!!
+        assertTrue(saved.winAcknowledged)
+        assertEquals(0L, saved.extra)
+        assertEquals(40L, saved.state.score)
+        assertEquals(7, saved.state.moves)
+        assertEquals(-99L, saved.state.rngState)
+        assertEquals(3, saved.state.cells[15])
+    }
+
     @Test fun damagedSavesAreRejectedNotCrashed() {
         val good = SaveCodec.encode(Game.new(4, 1), false)
         assertNotNull(SaveCodec.decode(good))
         assertNull(SaveCodec.decode(null))
         assertNull(SaveCodec.decode(""))
         assertNull(SaveCodec.decode("garbage"))
-        assertNull(SaveCodec.decode(good.replaceFirst("1;", "2;")))            // unknown version
+        assertNull(SaveCodec.decode(good.replaceFirst("2;", "9;")))            // unknown version
         assertNull(SaveCodec.decode(good.replaceFirst(";4;", ";5;")))          // size does not match cells
         assertNull(SaveCodec.decode(good.replaceFirst(";4;", ";99;")))
         assertNull(SaveCodec.decode(good.dropLast(2)))                          // truncated

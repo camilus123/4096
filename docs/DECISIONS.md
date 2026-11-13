@@ -64,3 +64,16 @@ Choices confirmed by the owner, and choices made where the build brief was silen
 - **"Best" during play includes the current game**, so it rises with the score once the old
   record is beaten.
 - **A finished game is not resumed.** After game over the next Play starts a new board.
+- **Time attack's clock starts with the first move** and runs only while the game is on
+  screen: not in the menu, not in the background, not behind the game-over panel.
+- **The board asks before every move** whether play is still on, queued swipes included, so
+  a swipe cannot slip in after the clock hits zero or the last budgeted move is made.
+- **Time attack and Limited moves do not stop for the win tile.** The score is the goal
+  there; a "you win" panel would only cost time.
+- **A Zen game is scored when the player leaves it for a new one**, not when it gets stuck,
+  because a stuck Zen game can be undone and continued. Zen's "Best" box still tracks the
+  game in play.
+- **Zen keeps the newest 200 undo steps across an app restart**; within one sitting undo is
+  unlimited.
+- **Picking Time attack or Limited moves starts on the middle option** (3 minutes, 100 moves).
+- **The high-score screen lists only tables that have entries.**

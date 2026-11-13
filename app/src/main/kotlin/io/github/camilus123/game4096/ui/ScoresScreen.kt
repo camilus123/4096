@@ -27,15 +27,13 @@ import androidx.compose.ui.unit.sp
 import io.github.camilus123.game4096.R
 import io.github.camilus123.game4096.core.Rules
 import io.github.camilus123.game4096.core.ScoreTable
-import io.github.camilus123.game4096.data.GameKey
+import io.github.camilus123.game4096.core.GameRules
 import io.github.camilus123.game4096.game.GameViewModel
 import java.text.DateFormat
 import java.util.Date
 
 private val GRID_SIZES = intArrayOf(4, 5, 6)
 
-/** Modes that keep a score table, with their display names. Later milestones add to this. */
-private val SCORED_MODES = listOf(GameKey.CLASSIC to R.string.mode_classic)
 
 @Composable
 fun ScoresScreen(vm: GameViewModel, onBack: () -> Unit) {
@@ -67,8 +65,21 @@ fun ScoresScreen(vm: GameViewModel, onBack: () -> Unit) {
                     fontWeight = FontWeight.Bold,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
-                for ((modeId, nameRes) in SCORED_MODES) {
-                    ModeTable(stringResource(nameRes), vm.scores(size, modeId), dateFormat)
+                // Only tables with something in them; eight empty boxes per grid would be noise.
+                var shown = 0
+                for (rules in GameRules.ALL) {
+                    val table = vm.scores(size, rules)
+                    if (!table.isEmpty) {
+                        ModeTable(rulesLabel(rules), table, dateFormat)
+                        shown++
+                    }
+                }
+                if (shown == 0) {
+                    Text(
+                        text = stringResource(R.string.no_scores),
+                        style = MaterialTheme.typography.bodyLarge,
+                        color = MaterialTheme.colorScheme.onBackground,
+                    )
                 }
             }
             Spacer(Modifier.height(16.dp))
@@ -93,14 +104,6 @@ private fun ModeTable(modeName: String, table: ScoreTable, dateFormat: DateForma
             fontWeight = FontWeight.Bold,
             color = scheme.onSurfaceVariant,
         )
-        if (table.isEmpty) {
-            Text(
-                text = stringResource(R.string.no_scores),
-                style = MaterialTheme.typography.bodyMedium,
-                color = scheme.onSurfaceVariant,
-            )
-            return@Column
-        }
         Row(Modifier.padding(top = 6.dp)) {
             HeaderCell("#", Modifier.width(28.dp), TextAlign.Start)
             HeaderCell(stringResource(R.string.score), Modifier.weight(1.2f), TextAlign.Start)

@@ -31,16 +31,21 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import io.github.camilus123.game4096.R
+import io.github.camilus123.game4096.core.EndReason
+import io.github.camilus123.game4096.core.Mode
 import io.github.camilus123.game4096.core.Rules
+import io.github.camilus123.game4096.core.SessionStatus
 import io.github.camilus123.game4096.game.BoardPalette
 import io.github.camilus123.game4096.game.BoardView
-import io.github.camilus123.game4096.game.GameStatus
 import io.github.camilus123.game4096.game.GameViewModel
 
 @Composable
 fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
-    val game = vm.game ?: return
+    val session = vm.session ?: return
+    val game = session.game
+    val rules = session.rules
     val status = vm.status
+    val boardVersion = vm.boardVersion
     val boardDescription = stringResource(R.string.board_description)
 
     Column(
@@ -57,8 +62,7 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     color = MaterialTheme.colorScheme.onBackground,
                 )
                 Text(
-                    text = stringResource(R.string.mode_classic) + " · " +
-                        stringResource(R.string.grid_size, game.size),
+                    text = rulesLabel(rules) + " · " + stringResource(R.string.grid_size, game.size),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onBackground,
                 )
@@ -68,20 +72,40 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
             Stat(stringResource(R.string.best), vm.best.toString())
         }
         Spacer(Modifier.height(12.dp))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
             QuietButton(onClick = onMenu) {
-                Text(stringResource(R.string.menu))
+                Text(stringResource(R.string.menu), maxLines = 1)
             }
             FilledTonalButton(onClick = vm::newGame, shape = RoundedCornerShape(12.dp)) {
-                Text(stringResource(R.string.new_game))
+                Text(stringResource(R.string.new_game), maxLines = 1)
+            }
+            if (rules.mode == Mode.ZEN) {
+                FilledTonalButton(
+                    onClick = vm::undo,
+                    enabled = vm.canUndo,
+                    shape = RoundedCornerShape(12.dp),
+                ) {
+                    Text(stringResource(R.string.undo), maxLines = 1)
+                }
             }
             Spacer(Modifier.weight(1f))
-            Text(
-                text = stringResource(R.string.moves) + ": " + vm.moves,
-                modifier = Modifier.align(Alignment.CenterVertically),
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.onBackground,
-            )
+            when (rules.mode) {
+                Mode.TIME_ATTACK -> Counter(
+                    label = stringResource(R.string.time),
+                    value = formatClock(vm.displayTimeMs),
+                    urgent = vm.displayTimeMs <= 10_000L,
+                )
+                Mode.LIMITED_MOVES -> Counter(
+                    label = stringResource(R.string.moves_left),
+                    value = vm.movesLeft.toString(),
+                    urgent = vm.movesLeft <= 5,
+                )
+                Mode.ZEN -> Unit // the undo button takes this space
+                else -> Counter(label = stringResource(R.string.moves), value = vm.moves.toString(), urgent = false)
+            }
         }
         Spacer(Modifier.height(12.dp))
 
@@ -98,22 +122,46 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                 update = { view ->
                     view.palette = if (dark) BoardPalette.DARK else BoardPalette.LIGHT
                     view.onMoved = vm::onMoved
-                    view.inputEnabled = status == GameStatus.PLAYING
+                    view.moveGate = vm::canAcceptMove
+                    view.inputEnabled = status == SessionStatus.PLAYING
                     view.contentDescription = boardDescription
                     view.bind(game)
+                    view.showVersion(boardVersion)
                 },
             )
-            if (status != GameStatus.PLAYING) {
+            if (status != SessionStatus.PLAYING) {
                 ResultOverlay(
                     status = status,
+                    reason = vm.endReason,
                     winTile = Rules.tileValue(game.winExponent).toString(),
                     score = vm.score.toString(),
                     rank = vm.finalRank,
                     onKeepPlaying = vm::keepPlaying,
+                    onUndo = vm::undo,
                     onNewGame = vm::newGame,
                 )
             }
         }
+    }
+}
+
+/** Small label over a number, right-aligned in the button row: moves, moves left, or the clock. */
+@Composable
+private fun Counter(label: String, value: String, urgent: Boolean) {
+    Column(horizontalAlignment = Alignment.End) {
+        Text(
+            text = label.uppercase(),
+            maxLines = 1,
+            style = MaterialTheme.typography.labelSmall,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+        Text(
+            text = value,
+            maxLines = 1,
+            fontSize = 22.sp,
+            fontWeight = FontWeight.Bold,
+            color = if (urgent) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.onBackground,
+        )
     }
 }
 
@@ -143,20 +191,44 @@ private fun Stat(label: String, value: String) {
 
 @Composable
 private fun ResultOverlay(
-    status: GameStatus,
+    status: SessionStatus,
+    reason: EndReason,
     winTile: String,
     score: String,
     rank: Int,
     onKeepPlaying: () -> Unit,
+    onUndo: () -> Unit,
     onNewGame: () -> Unit,
 ) {
-    val won = status == GameStatus.WON
+    val title: String
+    val text: String
+    when (status) {
+        SessionStatus.WON -> {
+            title = stringResource(R.string.win_title)
+            text = stringResource(R.string.win_text, winTile)
+        }
+        SessionStatus.STUCK -> {
+            title = stringResource(R.string.stuck_title)
+            text = stringResource(R.string.stuck_text)
+        }
+        else -> {
+            title = stringResource(
+                when (reason) {
+                    EndReason.TIME_UP -> R.string.time_up_title
+                    EndReason.OUT_OF_MOVES -> R.string.out_of_moves_title
+                    else -> R.string.game_over_title
+                },
+            )
+            text = if (reason == EndReason.NO_MOVES) stringResource(R.string.game_over_text, score)
+            else stringResource(R.string.final_score, score)
+        }
+    }
     val swallow = remember { MutableInteractionSource() }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(16.dp))
-            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.82f))
+            .background(MaterialTheme.colorScheme.background.copy(alpha = 0.92f))
             // Swallow touches so the board underneath cannot be swiped.
             .clickable(interactionSource = swallow, indication = null, onClick = {}),
         contentAlignment = Alignment.Center,
@@ -166,20 +238,20 @@ private fun ResultOverlay(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Text(
-                text = stringResource(if (won) R.string.win_title else R.string.game_over_title),
-                fontSize = 40.sp,
+                text = title,
+                fontSize = 38.sp,
                 fontWeight = FontWeight.Black,
+                textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground,
             )
             Spacer(Modifier.height(8.dp))
             Text(
-                text = if (won) stringResource(R.string.win_text, winTile)
-                else stringResource(R.string.game_over_text, score),
+                text = text,
                 style = MaterialTheme.typography.titleMedium,
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground,
             )
-            if (!won && rank >= 0) {
+            if (status == SessionStatus.OVER && rank >= 0) {
                 Spacer(Modifier.height(8.dp))
                 Text(
                     text = if (rank == 0) stringResource(R.string.new_best)
@@ -191,16 +263,22 @@ private fun ResultOverlay(
                 )
             }
             Spacer(Modifier.height(24.dp))
-            if (won) {
-                Button(onClick = onKeepPlaying, shape = RoundedCornerShape(12.dp)) {
-                    Text(stringResource(R.string.keep_playing))
+            when (status) {
+                SessionStatus.WON -> {
+                    Button(onClick = onKeepPlaying, shape = RoundedCornerShape(12.dp)) {
+                        Text(stringResource(R.string.keep_playing))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    QuietButton(onClick = onNewGame) { Text(stringResource(R.string.new_game)) }
                 }
-                Spacer(Modifier.height(8.dp))
-                QuietButton(onClick = onNewGame) {
-                    Text(stringResource(R.string.new_game))
+                SessionStatus.STUCK -> {
+                    Button(onClick = onUndo, shape = RoundedCornerShape(12.dp)) {
+                        Text(stringResource(R.string.undo))
+                    }
+                    Spacer(Modifier.height(8.dp))
+                    QuietButton(onClick = onNewGame) { Text(stringResource(R.string.new_game)) }
                 }
-            } else {
-                Button(onClick = onNewGame, shape = RoundedCornerShape(12.dp)) {
+                else -> Button(onClick = onNewGame, shape = RoundedCornerShape(12.dp)) {
                     Text(stringResource(R.string.try_again))
                 }
             }

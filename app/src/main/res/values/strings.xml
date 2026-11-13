@@ -6,6 +6,24 @@
     <string name="grid_size" translatable="false">%1$d×%1$d</string>
     <string name="grid_goal">Goal: %1$s</string>
     <string name="mode_classic">Classic</string>
+    <string name="mode_zen">Zen</string>
+    <string name="mode_time">Time attack</string>
+    <string name="mode_moves">Limited moves</string>
+    <string name="mode_classic_desc">Reach the goal tile, then keep going.</string>
+    <string name="mode_zen_desc">No pressure. Undo as much as you like.</string>
+    <string name="mode_time_desc">Score all you can before the clock runs out.</string>
+    <string name="mode_moves_desc">A fixed number of moves. Make them count.</string>
+    <string name="mode">Mode</string>
+    <string name="minutes">%1$d min</string>
+    <string name="move_budget">%1$d moves</string>
+    <string name="undo">Undo</string>
+    <string name="time">Time</string>
+    <string name="moves_left">Moves left</string>
+    <string name="time_up_title">Time\'s up!</string>
+    <string name="out_of_moves_title">Out of moves</string>
+    <string name="final_score">Final score: %1$s</string>
+    <string name="stuck_title">No moves left</string>
+    <string name="stuck_text">Undo a move or start a new board.</string>
     <string name="play">Play</string>
     <string name="continue_game">Continue</string>
     <string name="high_scores">High scores</string>

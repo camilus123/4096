@@ -3,16 +3,17 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: milestone 3 of 8.** Classic mode is playable on all three grids, games are saved
-and resumed automatically, and high scores are kept per grid. There is no audio yet.
+**Status: milestone 4 of 8.** Classic, Zen, Time attack and Limited moves are playable on all
+three grids, with autosave and high scores per grid and mode. Versus AI and audio are not
+built yet.
 
 | Milestone | State |
 |---|---|
 | 1. Rules engine and tests | done |
 | 2. Playable Classic on all grids | done |
 | 3. Saving and high scores | done |
-| 4. Zen, Time attack, Limited moves | next |
-| 5. Versus AI | |
+| 4. Zen, Time attack, Limited moves | done |
+| 5. Versus AI | next |
 | 6. Audio | |
 | 7. Quality levels and performance tuning | |
 | 8. Polish and release build | |
@@ -41,6 +42,10 @@ the release build in milestone 8.
   reproducible random generator (`SeededRandom`) and one board in play (`Game`, with undo and
   save/restore). Boards are flat `IntArray`s of tile exponents, and the move path allocates
   nothing, so the opponent AI can search with the same code the player uses.
+- `Session` (also in `core/`) adds what differs between modes on top of `Game`: the Time
+  attack clock, the move budget, Zen's undo and "stuck" state, and when a game counts as won
+  or over. `GameRules` names a mode plus its duration or budget and gives each its own save
+  slot and score table.
 - `app/` is the Android app. Menus and the game screen frame are Jetpack Compose; the board
   itself is `BoardView`, a plain `View` drawn on a Canvas. It allocates nothing per frame,
   takes its clock from the Choreographer's vsync timestamp, and asks for frames only while

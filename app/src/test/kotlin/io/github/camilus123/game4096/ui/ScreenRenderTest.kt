@@ -5,6 +5,9 @@ import android.graphics.Canvas
 import android.os.Looper
 import androidx.test.core.app.ApplicationProvider
 import io.github.camilus123.game4096.MainActivity
+import io.github.camilus123.game4096.core.Direction
+import io.github.camilus123.game4096.core.GameRules
+import io.github.camilus123.game4096.core.Mode
 import io.github.camilus123.game4096.core.ScoreEntry
 import io.github.camilus123.game4096.data.GameKey
 import io.github.camilus123.game4096.data.Storage
@@ -56,9 +59,12 @@ class ScreenRenderTest {
         val day = 86_400_000L
         val t0 = 1_794_000_000_000L
         for ((i, s) in longArrayOf(20480, 15872, 9004, 7216, 3120).withIndex()) {
-            storage.addScore(GameKey(4, GameKey.CLASSIC), ScoreEntry(s, 11 - i, 900 - i * 150, t0 + i * day))
+            storage.addScore(GameKey(4, "classic"), ScoreEntry(s, 11 - i, 900 - i * 150, t0 + i * day))
         }
-        storage.addScore(GameKey(5, GameKey.CLASSIC), ScoreEntry(61234, 12, 2100, t0))
+        storage.addScore(GameKey(5, "classic"), ScoreEntry(61234, 12, 2100, t0))
+        storage.addScore(GameKey(4, "zen"), ScoreEntry(31000, 11, 1500, t0))
+        storage.addScore(GameKey(4, "time_180"), ScoreEntry(5120, 9, 240, t0 + day))
+        storage.addScore(GameKey(4, "moves_100"), ScoreEntry(1408, 7, 100, t0 + 2 * day))
     }
 
     @Test @Config(qualifiers = "w411dp-h914dp-420dpi")
@@ -77,5 +83,34 @@ class ScreenRenderTest {
         vm.showMenu()
         vm.play()
         capture(activity, "$prefix-game")
+        vm.showMenu()
+
+        vm.selectRules(GameRules(Mode.TIME_ATTACK, 180))
+        capture(activity, "$prefix-menu-time")
+        vm.play()
+        capture(activity, "$prefix-game-time")
+        vm.showMenu()
+
+        vm.selectGrid(6)
+        vm.selectRules(GameRules(Mode.LIMITED_MOVES, 50))
+        vm.play()
+        val g = vm.game!!
+        var i = 0
+        while (vm.canAcceptMove()) {
+            if (g.move(Direction.entries[i++ % 4]) >= 0) vm.onMoved()
+        }
+        capture(activity, "$prefix-over-moves")
+        vm.showMenu()
+
+        vm.selectGrid(4)
+        vm.selectRules(GameRules.ZEN)
+        vm.play()
+        val z = vm.game!!
+        while (vm.canAcceptMove()) {
+            if (z.move(Direction.entries[i++ % 4]) >= 0) vm.onMoved()
+        }
+        capture(activity, "$prefix-zen-stuck")
+        vm.undo()
+        capture(activity, "$prefix-zen")
     }
 }
