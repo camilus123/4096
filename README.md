@@ -3,15 +3,15 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: milestone 2 of 8.** Classic mode is playable on all three grids. Nothing is saved yet,
-and there is no audio.
+**Status: milestone 3 of 8.** Classic mode is playable on all three grids, games are saved
+and resumed automatically, and high scores are kept per grid. There is no audio yet.
 
 | Milestone | State |
 |---|---|
 | 1. Rules engine and tests | done |
 | 2. Playable Classic on all grids | done |
-| 3. Saving and high scores | next |
-| 4. Zen, Time attack, Limited moves | |
+| 3. Saving and high scores | done |
+| 4. Zen, Time attack, Limited moves | next |
 | 5. Versus AI | |
 | 6. Audio | |
 | 7. Quality levels and performance tuning | |
@@ -45,8 +45,14 @@ the release build in milestone 8.
   itself is `BoardView`, a plain `View` drawn on a Canvas. It allocates nothing per frame,
   takes its clock from the Choreographer's vsync timestamp, and asks for frames only while
   tiles are animating. `MainActivity` requests the display's highest refresh rate.
+- `Storage` keeps saved games, high-score tables and the last screen in the app's private
+  preferences. Reads come from memory; writes go to disk on one background thread. The text
+  formats (`SaveCodec`, `ScoreTable`) live in `core/` and reject damaged data instead of
+  crashing. One save slot and one score table exist per grid size and mode.
 - The board view is tested on the JVM with Robolectric's native graphics: the tests render
   real boards, check tile colours pixel by pixel, and drive swipes and the animation clock.
+  Other tests restart the view model against the same storage to check that saves and scores
+  survive, and draw whole screens to `app/build/screen-renders/` for a human to look at.
 
 Decisions that the build brief left open are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 

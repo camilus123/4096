@@ -27,7 +27,13 @@ import io.github.camilus123.game4096.core.Rules
 private val GRID_SIZES = intArrayOf(4, 5, 6)
 
 @Composable
-fun MenuScreen(gridSize: Int, onGridSize: (Int) -> Unit, onPlay: () -> Unit) {
+fun MenuScreen(
+    gridSize: Int,
+    hasSavedGame: Boolean,
+    onGridSize: (Int) -> Unit,
+    onPlay: () -> Unit,
+    onScores: () -> Unit,
+) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -72,10 +78,20 @@ fun MenuScreen(gridSize: Int, onGridSize: (Int) -> Unit, onPlay: () -> Unit) {
             shape = RoundedCornerShape(14.dp),
         ) {
             Text(
-                text = stringResource(R.string.play) + "  ·  " + stringResource(R.string.mode_classic),
+                text = stringResource(if (hasSavedGame) R.string.continue_game else R.string.play) +
+                    "  ·  " + stringResource(R.string.mode_classic),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
+        }
+        Spacer(Modifier.height(12.dp))
+        QuietButton(
+            onClick = onScores,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(52.dp),
+        ) {
+            Text(text = stringResource(R.string.high_scores), fontSize = 17.sp)
         }
     }
 }

@@ -7,6 +7,14 @@
     <string name="grid_goal">Goal: %1$s</string>
     <string name="mode_classic">Classic</string>
     <string name="play">Play</string>
+    <string name="continue_game">Continue</string>
+    <string name="high_scores">High scores</string>
+    <string name="no_scores">No scores yet.</string>
+    <string name="best">Best</string>
+    <string name="best_tile">Tile</string>
+    <string name="date">Date</string>
+    <string name="new_best">New best score!</string>
+    <string name="table_rank">Number %1$d on the high-score table.</string>
     <string name="score">Score</string>
     <string name="moves">Moves</string>
     <string name="menu">Menu</string>

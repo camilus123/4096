@@ -18,7 +18,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -66,16 +65,23 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
             }
             Stat(stringResource(R.string.score), vm.score.toString())
             Spacer(Modifier.width(8.dp))
-            Stat(stringResource(R.string.moves), vm.moves.toString())
+            Stat(stringResource(R.string.best), vm.best.toString())
         }
         Spacer(Modifier.height(12.dp))
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick = onMenu, shape = RoundedCornerShape(12.dp)) {
+            QuietButton(onClick = onMenu) {
                 Text(stringResource(R.string.menu))
             }
-            FilledTonalButton(onClick = { vm.newGame(game.size) }, shape = RoundedCornerShape(12.dp)) {
+            FilledTonalButton(onClick = vm::newGame, shape = RoundedCornerShape(12.dp)) {
                 Text(stringResource(R.string.new_game))
             }
+            Spacer(Modifier.weight(1f))
+            Text(
+                text = stringResource(R.string.moves) + ": " + vm.moves,
+                modifier = Modifier.align(Alignment.CenterVertically),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onBackground,
+            )
         }
         Spacer(Modifier.height(12.dp))
 
@@ -102,8 +108,9 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     status = status,
                     winTile = Rules.tileValue(game.winExponent).toString(),
                     score = vm.score.toString(),
+                    rank = vm.finalRank,
                     onKeepPlaying = vm::keepPlaying,
-                    onNewGame = { vm.newGame(game.size) },
+                    onNewGame = vm::newGame,
                 )
             }
         }
@@ -139,6 +146,7 @@ private fun ResultOverlay(
     status: GameStatus,
     winTile: String,
     score: String,
+    rank: Int,
     onKeepPlaying: () -> Unit,
     onNewGame: () -> Unit,
 ) {
@@ -171,13 +179,24 @@ private fun ResultOverlay(
                 textAlign = TextAlign.Center,
                 color = MaterialTheme.colorScheme.onBackground,
             )
+            if (!won && rank >= 0) {
+                Spacer(Modifier.height(8.dp))
+                Text(
+                    text = if (rank == 0) stringResource(R.string.new_best)
+                    else stringResource(R.string.table_rank, rank + 1),
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                    color = MaterialTheme.colorScheme.secondary,
+                )
+            }
             Spacer(Modifier.height(24.dp))
             if (won) {
                 Button(onClick = onKeepPlaying, shape = RoundedCornerShape(12.dp)) {
                     Text(stringResource(R.string.keep_playing))
                 }
                 Spacer(Modifier.height(8.dp))
-                OutlinedButton(onClick = onNewGame, shape = RoundedCornerShape(12.dp)) {
+                QuietButton(onClick = onNewGame) {
                     Text(stringResource(R.string.new_game))
                 }
             } else {

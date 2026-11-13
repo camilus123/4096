@@ -54,3 +54,13 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   about 0.8 MB at milestone 2).
 - **Android backup is left on**, so saved games and scores will follow the owner to a new
   phone through the system's own backup. This needs no permission.
+- **The game is saved after every move**, not only when the app goes to the background, so
+  a crash or a dead battery loses nothing. The disk write happens off the main thread.
+- **Closing the app mid-game reopens that game on the next launch.** Leaving through the
+  Menu button keeps the game saved but opens the menu next time; the Play button then reads
+  "Continue".
+- **A game reaches the high-score table once**: when it ends, or when the player abandons
+  it with "New game". A game with zero points is not recorded. Tables hold the best 10.
+- **"Best" during play includes the current game**, so it rises with the score once the old
+  record is beaten.
+- **A finished game is not resumed.** After game over the next Play starts a new board.

@@ -5,6 +5,14 @@
     <string name="grid_goal">Cilj: %1$s</string>
     <string name="mode_classic">Klasično</string>
     <string name="play">Igraj</string>
+    <string name="continue_game">Nadaljuj</string>
+    <string name="high_scores">Najboljši rezultati</string>
+    <string name="no_scores">Ni še rezultatov.</string>
+    <string name="best">Rekord</string>
+    <string name="best_tile">Ploščica</string>
+    <string name="date">Datum</string>
+    <string name="new_best">Nov rekord!</string>
+    <string name="table_rank">%1$d. mesto na lestvici.</string>
     <string name="score">Točke</string>
     <string name="moves">Poteze</string>
     <string name="menu">Meni</string>

@@ -39,12 +39,14 @@ jobs:
           path: app/build/outputs/apk/debug/*.apk
           if-no-files-found: error
 
-      - name: Upload board renders
+      - name: Upload rendered boards and screens
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: board-renders
-          path: app/build/board-renders/
+          name: renders
+          path: |
+            app/build/board-renders/
+            app/build/screen-renders/
           if-no-files-found: ignore
 
       - name: Upload test reports
