@@ -41,17 +41,22 @@ class BoardViewTest {
         val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
         val view = BoardView(activity)
         activity.setContentView(view)
+        return view
+    }
+
+    /** The window lays the view out at the (small) default screen size; force the size under test. */
+    private fun layout(view: View) {
         view.measure(
             View.MeasureSpec.makeMeasureSpec(side, View.MeasureSpec.EXACTLY),
             View.MeasureSpec.makeMeasureSpec(side, View.MeasureSpec.EXACTLY),
         )
         view.layout(0, 0, side, side)
-        return view
     }
 
     private fun settle() = shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
 
     private fun render(view: View, name: String): Bitmap {
+        layout(view)
         val bitmap = Bitmap.createBitmap(side, side, Bitmap.Config.ARGB_8888)
         view.draw(Canvas(bitmap))
         val dir = File("build/board-renders").apply { mkdirs() }
@@ -168,6 +173,6 @@ class BoardViewTest {
         settle()
         val looper = shadowOf(Looper.getMainLooper())
         assertTrue("nothing is scheduled once the animation has finished", looper.isIdle)
-        assertFalse(view.isDirty)
+        assertFalse(view.isAnimating)
     }
 }

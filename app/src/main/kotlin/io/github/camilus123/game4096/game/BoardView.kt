@@ -57,7 +57,9 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     private val merged = BooleanArray(MAX_CELLS)
     private var spawnIndex = -1
 
-    private var animating = false
+    /** True while tiles are moving. When false the view requests no frames. */
+    var isAnimating = false
+        private set
     private var intro = false // every tile scales in (new game)
     private var animStartNanos = -1L
     private var animMs = 0f
@@ -102,7 +104,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         if (newGame === game) return
         game = newGame
         queued = 0
-        animating = false
+        isAnimating = false
         if (newGame != null) {
             require(newGame.cellCount <= MAX_CELLS) { "grid too large for BoardView" }
             size = newGame.size
@@ -167,7 +169,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
 
     private fun swipe(dir: Direction) {
         if (!inputEnabled || game == null) return
-        if (animating && !intro && animMs < SLIDE_MS) {
+        if (isAnimating && !intro && animMs < SLIDE_MS) {
             // Tiles are still sliding: remember the swipe instead of dropping it.
             if (queued < QUEUE_SIZE) {
                 queue[queued++] = dir.ordinal
@@ -197,7 +199,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     // ---- Animation ---------------------------------------------------------------------
 
     private fun startAnimation() {
-        animating = true
+        isAnimating = true
         animStartNanos = -1L
         animMs = 0f
         postFrame()
@@ -213,13 +215,13 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
 
     override fun doFrame(frameTimeNanos: Long) {
         framePosted = false
-        if (!animating) return
+        if (!isAnimating) return
         if (animStartNanos < 0L) animStartNanos = frameTimeNanos
         animMs = (frameTimeNanos - animStartNanos) / 1_000_000f
 
         if (queued > 0 && (intro || animMs >= SLIDE_MS)) {
             // The slide is done: start the next queued swipe now and skip the rest of the pop.
-            animating = false
+            isAnimating = false
             while (queued > 0) {
                 val dir = DIRECTIONS[queue[0]]
                 for (i in 1 until queued) queue[i - 1] = queue[i]
@@ -227,23 +229,23 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
                 if (applyMove(dir)) break
             }
         } else if (animMs >= (if (intro) POP_MS else SLIDE_MS + POP_MS)) {
-            animating = false
+            isAnimating = false
             intro = false
         }
         invalidate()
-        if (animating) postFrame()
+        if (isAnimating) postFrame()
     }
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (animating) postFrame()
+        if (isAnimating) postFrame()
     }
 
     override fun onDetachedFromWindow() {
         choreographer.removeFrameCallback(this)
         framePosted = false
         // Nothing can drive the animation while detached; settle on the final board.
-        animating = false
+        isAnimating = false
         intro = false
         queued = 0
         super.onDetachedFromWindow()
@@ -298,7 +300,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         }
         if (game == null) return
 
-        if (animating && !intro && animMs < SLIDE_MS) {
+        if (isAnimating && !intro && animMs < SLIDE_MS) {
             // Slide phase: every tile of the old board travels to its destination.
             val t = easeOut(animMs / SLIDE_MS)
             for (i in 0 until n) {
@@ -311,7 +313,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
             }
         } else {
             // Pop phase (or at rest): the new board, with merged tiles bumping and new ones growing.
-            val popping = animating
+            val popping = isAnimating
             val t = if (!popping) 1f else {
                 val raw = (if (intro) animMs else animMs - SLIDE_MS) / POP_MS
                 if (raw < 0f) 0f else if (raw > 1f) 1f else raw
