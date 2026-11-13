@@ -44,7 +44,7 @@ Choices confirmed by the owner, and choices made where the build brief was silen
 - **The board is a classic `View`, not a Compose Canvas.** It gives direct control over
   invalidation and makes "no allocations per frame" easy to keep and to check.
 - **A move is applied to the game the instant the swipe is recognised**, and the view then
-  animates from the old board to the new one (100 ms slide, 130 ms merge pop / spawn).
+  animates from the old board to the new one (110 ms slide, 143 ms merge pop / spawn; slowed 10% at the owner's request).
 - **Swipe queue of two.** A swipe made while tiles are sliding is held and applied when the
   slide ends, skipping the rest of the pop. A third swipe replaces the second.
 - **A swipe fires during the drag**, once the finger has moved about 16 dp mostly along one

@@ -9,8 +9,10 @@ class BoardPalette(
     private val tiles: IntArray,
     private val darkText: Int,
     private val lightText: Int,
+    /** Which tiles get the dark label. Defaults to "the bright ones". */
+    usesDarkText: (exponent: Int, color: Int) -> Boolean = { _, color -> luminance(color) > 0.55f },
 ) {
-    private val text = IntArray(tiles.size) { if (luminance(tiles[it]) > 0.55f) darkText else lightText }
+    private val text = IntArray(tiles.size) { if (usesDarkText(it, tiles[it])) darkText else lightText }
 
     fun tile(exponent: Int): Int = tiles[if (exponent < tiles.size) exponent else tiles.size - 1]
 
@@ -24,30 +26,32 @@ class BoardPalette(
 
         /** Warm classic look for the light theme. */
         val LIGHT = BoardPalette(
-            board = c(0xFFB9AB9D),
-            emptyCell = c(0xFFCBBFB1),
+            board = c(0xFFC2A68A),
+            emptyCell = c(0xFFD8C3A8),
             tiles = intArrayOf(
                 0,
-                c(0xFFEDE3D6), // 2
-                c(0xFFEBDDC2), // 4
-                c(0xFFF3A96C), // 8
-                c(0xFFF58F58), // 16
-                c(0xFFF4775A), // 32
-                c(0xFFF2603F), // 64
-                c(0xFFECCB6A), // 128
-                c(0xFFECC85A), // 256
-                c(0xFFECC44A), // 512
-                c(0xFFECC13A), // 1024
-                c(0xFFECBE2A), // 2048
-                c(0xFFE0557F), // 4096
-                c(0xFFC83F74), // 8192
-                c(0xFF8E44AD), // 16384
-                c(0xFF5B48B5), // 32768
-                c(0xFF2F6FB8), // 65536
-                c(0xFF3B3A34), // beyond
+                c(0xFFF7E8CF), // 2
+                c(0xFFF6DCA8), // 4
+                c(0xFFFFA655), // 8
+                c(0xFFFF8840), // 16
+                c(0xFFFF6845), // 32
+                c(0xFFF84526), // 64
+                c(0xFFF8D058), // 128
+                c(0xFFF8CA40), // 256
+                c(0xFFF9C428), // 512
+                c(0xFFFABD10), // 1024
+                c(0xFFFFB700), // 2048
+                c(0xFFEC3F78), // 4096
+                c(0xFFD02A6E), // 8192
+                c(0xFF9B3EC6), // 16384
+                c(0xFF5C46D2), // 32768
+                c(0xFF2474D4), // 65536
+                c(0xFF3B352E), // beyond
             ),
-            darkText = c(0xFF746B62),
-            lightText = c(0xFFFBF7F0),
+            darkText = c(0xFF6E5F52),
+            lightText = c(0xFFFFFAF2),
+            // Brown on the pale tiles and the yellows, white on the oranges, reds and beyond.
+            usesDarkText = { exponent, _ -> exponent <= 2 || exponent in 7..11 },
         )
 
         /** Dark neon look for the dark theme. */

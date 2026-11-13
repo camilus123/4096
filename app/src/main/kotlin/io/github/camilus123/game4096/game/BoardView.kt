@@ -358,8 +358,8 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     private companion object {
         const val MAX_CELLS = Rules.MAX_SIZE * Rules.MAX_SIZE
         const val QUEUE_SIZE = 2
-        const val SLIDE_MS = 100f
-        const val POP_MS = 130f
+        const val SLIDE_MS = 110f
+        const val POP_MS = 143f
         const val MAX_DIGITS = 7
 
         val DIRECTIONS = Direction.entries.toTypedArray()

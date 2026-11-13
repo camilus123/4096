@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.camilus123.game4096"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "0.2.0"
+        versionCode = 3
+        versionName = "0.2.1"
     }
 
     androidResources {
@@ -42,6 +42,8 @@ android {
     testOptions {
         unitTests.isIncludeAndroidResources = true
         unitTests.all {
+            // Robolectric fetches Android runtime jars itself; use the same host Gradle uses.
+            it.systemProperty("robolectric.dependency.repo.url", "https://repo.maven.apache.org/maven2")
             it.testLogging {
                 events("failed")
                 showExceptions = true
