@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="menu_tagline">Premakni, združi, ponovi.</string>
+    <string name="grid">Mreža</string>
+    <string name="grid_goal">Cilj: %1$s</string>
+    <string name="mode_classic">Klasično</string>
+    <string name="play">Igraj</string>
+    <string name="score">Točke</string>
+    <string name="moves">Poteze</string>
+    <string name="menu">Meni</string>
+    <string name="new_game">Nova igra</string>
+    <string name="win_title">Zmaga!</string>
+    <string name="win_text">Ploščica %1$s je na plošči.</string>
+    <string name="keep_playing">Igraj naprej</string>
+    <string name="game_over_title">Konec igre</string>
+    <string name="game_over_text">Ni več potez. Končni rezultat: %1$s</string>
+    <string name="try_again">Poskusi znova</string>
+    <string name="board_description">Igralna plošča. Ploščice premikaš s potegom.</string>
+</resources>

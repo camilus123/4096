@@ -3,13 +3,14 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: milestone 1 of 8.** The rules engine and its tests exist. There is no app yet.
+**Status: milestone 2 of 8.** Classic mode is playable on all three grids. Nothing is saved yet,
+and there is no audio.
 
 | Milestone | State |
 |---|---|
 | 1. Rules engine and tests | done |
-| 2. Playable Classic on all grids | next |
-| 3. Saving and high scores | |
+| 2. Playable Classic on all grids | done |
+| 3. Saving and high scores | next |
 | 4. Zen, Time attack, Limited moves | |
 | 5. Versus AI | |
 | 6. Audio | |
@@ -18,14 +19,21 @@ Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, n
 
 ## Building
 
-Requires JDK 17. The Gradle wrapper downloads everything else.
+Requires JDK 17 or newer and the Android SDK (platform 36). The Gradle wrapper downloads
+everything else.
 
 ```
-./gradlew test
+./gradlew test                 # rules tests and board-view tests
+./gradlew :app:assembleDebug   # app/build/outputs/apk/debug/app-debug.apk
 ```
 
-Every push to `main` runs the tests in GitHub Actions (`.github/workflows/ci.yml`). Once the
-app module exists, the same workflow will attach an installable APK to each run.
+Every push to `main` runs the tests and builds the APK in GitHub Actions
+(`.github/workflows/ci.yml`). To get a build without a development setup, open the latest run
+under the repository's **Actions** tab and download the `4096-debug-apk` artifact.
+
+Debug builds are signed with a throwaway key that differs between CI runs, so Android refuses
+to install one over another: uninstall the old build first. A stable signing key comes with
+the release build in milestone 8.
 
 ## Architecture
 
@@ -33,8 +41,12 @@ app module exists, the same workflow will attach an installable APK to each run.
   reproducible random generator (`SeededRandom`) and one board in play (`Game`, with undo and
   save/restore). Boards are flat `IntArray`s of tile exponents, and the move path allocates
   nothing, so the opponent AI can search with the same code the player uses.
-- `app/` (from milestone 2) will be the Android app: Jetpack Compose for menus and settings,
-  a custom Canvas-drawn board for gameplay.
+- `app/` is the Android app. Menus and the game screen frame are Jetpack Compose; the board
+  itself is `BoardView`, a plain `View` drawn on a Canvas. It allocates nothing per frame,
+  takes its clock from the Choreographer's vsync timestamp, and asks for frames only while
+  tiles are animating. `MainActivity` requests the display's highest refresh rate.
+- The board view is tested on the JVM with Robolectric's native graphics: the tests render
+  real boards, check tile colours pixel by pixel, and drive swipes and the animation clock.
 
 Decisions that the build brief left open are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
 

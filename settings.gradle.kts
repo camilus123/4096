@@ -17,3 +17,4 @@ dependencyResolutionManagement {
 rootProject.name = "4096"
 
 include(":core")
+include(":app")

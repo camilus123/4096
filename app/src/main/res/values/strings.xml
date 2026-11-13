@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name" translatable="false">4096</string>
+    <string name="menu_tagline">Slide, merge, repeat.</string>
+    <string name="grid">Grid</string>
+    <string name="grid_size" translatable="false">%1$d×%1$d</string>
+    <string name="grid_goal">Goal: %1$s</string>
+    <string name="mode_classic">Classic</string>
+    <string name="play">Play</string>
+    <string name="score">Score</string>
+    <string name="moves">Moves</string>
+    <string name="menu">Menu</string>
+    <string name="new_game">New game</string>
+    <string name="win_title">You win!</string>
+    <string name="win_text">The %1$s tile is on the board.</string>
+    <string name="keep_playing">Keep playing</string>
+    <string name="game_over_title">Game over</string>
+    <string name="game_over_text">No moves left. Final score: %1$s</string>
+    <string name="try_again">Try again</string>
+    <string name="board_description">Game board. Swipe to move the tiles.</string>
+</resources>

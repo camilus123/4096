@@ -37,4 +37,20 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   same new tile, so undo cannot be used to re-roll a bad spawn.
 - **Unit tests use JUnit 4**, because it is the one test framework that can also run on the
   network-restricted machine this was written on (`tools/test-core-offline.sh`).
-- **Kotlin 2.2.20, Gradle 8.14.3**, JVM target 17.
+- **Toolchain: Gradle 8.14.3, Android Gradle Plugin 8.13.2, Kotlin 2.2.21, Compose BOM
+  2025.12.01, compile and target SDK 36.** These are a year behind the newest releases
+  (AGP 9.5, Kotlin 2.4) on purpose: it is a combination known to work together. Upgrading
+  is a separate, low-risk task for later.
+- **The board is a classic `View`, not a Compose Canvas.** It gives direct control over
+  invalidation and makes "no allocations per frame" easy to keep and to check.
+- **A move is applied to the game the instant the swipe is recognised**, and the view then
+  animates from the old board to the new one (100 ms slide, 130 ms merge pop / spawn).
+- **Swipe queue of two.** A swipe made while tiles are sliding is held and applied when the
+  slide ends, skipping the rest of the pop. A third swipe replaces the second.
+- **A swipe fires during the drag**, once the finger has moved about 16 dp mostly along one
+  axis, and re-arms without lifting. Clearly diagonal drags are ignored.
+- **Swipes work anywhere below the header**, not only on the board.
+- **No navigation library and no icon library**, to keep the APK small (release build is
+  about 0.8 MB at milestone 2).
+- **Android backup is left on**, so saved games and scores will follow the owner to a new
+  phone through the system's own backup. This needs no permission.

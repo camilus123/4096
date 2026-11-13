@@ -29,10 +29,30 @@ jobs:
       - name: Unit tests
         run: ./gradlew test --stacktrace
 
-      - name: Upload test reports
+      - name: Build debug APK
+        run: ./gradlew :app:assembleDebug --stacktrace
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 4096-debug-apk
+          path: app/build/outputs/apk/debug/*.apk
+          if-no-files-found: error
+
+      - name: Upload board renders
         if: always()
         uses: actions/upload-artifact@v4
         with:
+          name: board-renders
+          path: app/build/board-renders/
+          if-no-files-found: ignore
+
+      - name: Upload test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
           name: test-reports
-          path: '**/build/reports/tests/'
+          path: |
+            **/build/reports/tests/
+            **/build/test-results/
           if-no-files-found: ignore
