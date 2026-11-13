@@ -77,3 +77,19 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   unlimited.
 - **Picking Time attack or Limited moves starts on the middle option** (3 minutes, 100 moves).
 - **The high-score screen lists only tables that have entries.**
+- **Versus: the opponent does not move until the player's first move**, and the timed
+  rule's clock starts then too. The opponent and the clock stop in the background and in
+  the menu.
+- **Versus race: running out of moves before reaching the target loses.** Without this a
+  stuck side would leave the match hanging.
+- **Versus timed: a stuck side keeps its score.** The match ends early only once the other
+  side has passed it; otherwise it runs to the clock.
+- **Versus results are counted per grid and difficulty**, across all three win rules, as the
+  brief asks. Abandoning a match with "New match" counts as nothing.
+- **One unfinished Versus match is kept per grid.** "Continue" appears only if the win rule,
+  target or duration, and difficulty chosen in the menu match it; otherwise Play starts a
+  new match and replaces it.
+- **Versus opens on Race to 512 against Easy.**
+- **The opponent's strength was set by simulation**, not by feel; see README for typical
+  results. On 5x5 and 6x6 every level survives far longer than on 4x4 (so does a human), so
+  "Last standing" on the big grids can be a very long match.

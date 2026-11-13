@@ -5,6 +5,9 @@ enum class Mode(val id: String) {
     ZEN("zen"),
     TIME_ATTACK("time"),
     LIMITED_MOVES("moves"),
+
+    /** Against the computer. Played through [VersusMatch], not [Session]. */
+    VERSUS("versus"),
 }
 
 /**
@@ -17,6 +20,7 @@ class GameRules(val mode: Mode, val variant: Int = 0) {
     init {
         when (mode) {
             Mode.TIME_ATTACK, Mode.LIMITED_MOVES -> require(variant > 0) { "$mode needs a positive variant" }
+            Mode.VERSUS -> throw IllegalArgumentException("Versus is configured by VersusConfig")
             else -> require(variant == 0) { "$mode has no variants" }
         }
     }

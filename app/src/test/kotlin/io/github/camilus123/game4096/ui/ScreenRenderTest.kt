@@ -3,9 +3,17 @@ package io.github.camilus123.game4096.ui
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.os.Looper
+import android.view.KeyEvent
+import android.view.View
+import android.view.ViewGroup
+import io.github.camilus123.game4096.game.BoardView
 import androidx.test.core.app.ApplicationProvider
 import io.github.camilus123.game4096.MainActivity
+import io.github.camilus123.game4096.core.Difficulty
 import io.github.camilus123.game4096.core.Direction
+import io.github.camilus123.game4096.core.Outcome
+import io.github.camilus123.game4096.core.VersusConfig
+import io.github.camilus123.game4096.core.VersusRule
 import io.github.camilus123.game4096.core.GameRules
 import io.github.camilus123.game4096.core.Mode
 import io.github.camilus123.game4096.core.ScoreEntry
@@ -53,9 +61,21 @@ class ScreenRenderTest {
         assertTrue("screen $name is blank", differs)
     }
 
+    /** The board the player swipes on: the interactive BoardView in the activity. */
+    private fun playerBoard(activity: MainActivity): BoardView {
+        fun find(v: View): BoardView? {
+            if (v is BoardView && v.interactive) return v
+            if (v is ViewGroup) for (c in 0 until v.childCount) find(v.getChildAt(c))?.let { return it }
+            return null
+        }
+        return find(activity.window.decorView) ?: error("no board on screen")
+    }
+
+    private fun storage() = Storage.get(ApplicationProvider.getApplicationContext())
+
     private fun seed() {
         Storage.resetForTests()
-        val storage = Storage.get(ApplicationProvider.getApplicationContext())
+        val storage = storage()
         val day = 86_400_000L
         val t0 = 1_794_000_000_000L
         for ((i, s) in longArrayOf(20480, 15872, 9004, 7216, 3120).withIndex()) {
@@ -112,5 +132,45 @@ class ScreenRenderTest {
         capture(activity, "$prefix-zen-stuck")
         vm.undo()
         capture(activity, "$prefix-zen")
+        vm.showMenu()
+
+        // Versus: the setup, a match a little way in, and a result.
+        storage().addVersusResult(4, Difficulty.EASY, Outcome.PLAYER_WON)
+        storage().addVersusResult(4, Difficulty.EASY, Outcome.BOT_WON)
+        vm.selectMode(Mode.VERSUS)
+        vm.selectVersus(VersusConfig(VersusRule.TIMER, 180, Difficulty.EASY))
+        capture(activity, "$prefix-menu-versus")
+        vm.selectGrid(5)
+        vm.play()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        val keys = intArrayOf(
+            KeyEvent.KEYCODE_DPAD_LEFT, KeyEvent.KEYCODE_DPAD_DOWN,
+            KeyEvent.KEYCODE_DPAD_RIGHT, KeyEvent.KEYCODE_DPAD_DOWN,
+        )
+        repeat(60) { k ->
+            // Swipe on the real board view, as a player would, and let the opponent answer.
+            playerBoard(activity).onKeyDown(keys[k % 4], KeyEvent(KeyEvent.ACTION_DOWN, keys[k % 4]))
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(600))
+            Thread.sleep(3) // the opponent thinks on its own thread
+        }
+        capture(activity, "$prefix-versus")
+        vm.showMenu()
+
+        vm.selectGrid(4)
+        vm.selectVersus(VersusConfig(VersusRule.RACE, 256, Difficulty.EASY))
+        vm.play()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        var waited = 0
+        while (vm.outcome == Outcome.UNDECIDED && waited < 4000) {
+            if (waited < 12) playerBoard(activity).onKeyDown(keys[waited % 4], KeyEvent(KeyEvent.ACTION_DOWN, keys[waited % 4]))
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+            Thread.sleep(2)
+            waited++
+        }
+        assertTrue("the match never ended", vm.outcome != Outcome.UNDECIDED)
+        capture(activity, "$prefix-versus-result")
+        vm.showMenu()
+        vm.showScores()
+        capture(activity, "$prefix-scores-versus")
     }
 }

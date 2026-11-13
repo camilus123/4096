@@ -45,6 +45,14 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
 
     var inputEnabled: Boolean = true
 
+    /** False for the opponent's board in Versus: it only shows moves, it takes no input. */
+    var interactive: Boolean = true
+        set(value) {
+            field = value
+            isFocusable = value
+            isFocusableInTouchMode = value
+        }
+
     var palette: BoardPalette = BoardPalette.LIGHT
         set(value) {
             if (field !== value) {
@@ -138,10 +146,41 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         invalidate()
     }
 
+    /**
+     * Animates the move that was just made on the game by someone else (the opponent's AI).
+     * Call once after each such move. If a move was missed the board simply snaps to the
+     * current state.
+     */
+    fun showLatestMove() {
+        val g = game ?: return
+        val n = g.cellCount
+        System.arraycopy(cur, 0, prev, 0, n)
+        g.copyCellsInto(cur)
+        System.arraycopy(g.lastTrace.dest, 0, dest, 0, n)
+        System.arraycopy(g.lastTrace.merged, 0, merged, 0, n)
+        spawnIndex = g.lastSpawnIndex
+        queued = 0
+        intro = false
+        // The trace describes one move from the board we were showing. If it does not fit
+        // (a tile it moves is not where we drew it), skip the animation.
+        var fits = true
+        for (i in 0 until n) {
+            if ((prev[i] != 0) != (dest[i] >= 0)) {
+                fits = false
+                break
+            }
+        }
+        if (fits) startAnimation() else {
+            isAnimating = false
+            invalidate()
+        }
+    }
+
     // ---- Input -------------------------------------------------------------------------
 
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
+        if (!interactive) return false
         when (event.actionMasked) {
             MotionEvent.ACTION_DOWN -> {
                 downX = event.x

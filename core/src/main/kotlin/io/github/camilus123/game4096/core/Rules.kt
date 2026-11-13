@@ -130,6 +130,20 @@ object Rules {
         return n
     }
 
+    /** As [countEmpty], over the first [count] cells of a larger buffer. */
+    fun countEmpty(cells: IntArray, count: Int): Int {
+        var n = 0
+        for (i in 0 until count) if (cells[i] == 0) n++
+        return n
+    }
+
+    /** As [maxExponent], over the first [count] cells of a larger buffer. */
+    fun maxExponent(cells: IntArray, count: Int): Int {
+        var m = 0
+        for (i in 0 until count) if (cells[i] > m) m = cells[i]
+        return m
+    }
+
     fun maxExponent(cells: IntArray): Int {
         var m = 0
         for (e in cells) if (e > m) m = e

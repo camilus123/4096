@@ -27,26 +27,26 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.camilus123.game4096.R
+import io.github.camilus123.game4096.core.Difficulty
 import io.github.camilus123.game4096.core.GameRules
 import io.github.camilus123.game4096.core.Mode
 import io.github.camilus123.game4096.core.Rules
+import io.github.camilus123.game4096.core.VersusConfig
+import io.github.camilus123.game4096.core.VersusRule
+import io.github.camilus123.game4096.game.GameViewModel
 
 private val GRID_SIZES = intArrayOf(4, 5, 6)
 private val MODE_ROWS = listOf(
     listOf(Mode.CLASSIC, Mode.ZEN),
     listOf(Mode.TIME_ATTACK, Mode.LIMITED_MOVES),
+    listOf(Mode.VERSUS),
 )
 
 @Composable
-fun MenuScreen(
-    gridSize: Int,
-    rules: GameRules,
-    hasSavedGame: Boolean,
-    onGridSize: (Int) -> Unit,
-    onRules: (GameRules) -> Unit,
-    onPlay: () -> Unit,
-    onScores: () -> Unit,
-) {
+fun MenuScreen(vm: GameViewModel) {
+    val gridSize = vm.gridSize
+    val mode = vm.mode
+    val rules = vm.rules
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -57,7 +57,7 @@ fun MenuScreen(
     ) {
         Text(
             text = stringResource(R.string.app_name),
-            fontSize = 76.sp,
+            fontSize = 68.sp,
             fontWeight = FontWeight.Black,
             color = MaterialTheme.colorScheme.onBackground,
         )
@@ -72,7 +72,7 @@ fun MenuScreen(
             for (size in GRID_SIZES) {
                 Choice(
                     selected = size == gridSize,
-                    onClick = { onGridSize(size) },
+                    onClick = { vm.selectGrid(size) },
                     modifier = Modifier.weight(1f),
                 ) {
                     Text(stringResource(R.string.grid_size, size), fontSize = 24.sp, fontWeight = FontWeight.Bold)
@@ -95,17 +95,17 @@ fun MenuScreen(
                     .height(IntrinsicSize.Min),
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                for (mode in row) {
+                for (m in row) {
                     Choice(
-                        selected = mode == rules.mode,
-                        onClick = { if (mode != rules.mode) onRules(defaultRules(mode)) },
+                        selected = m == mode,
+                        onClick = { vm.selectMode(m) },
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxHeight(),
                     ) {
-                        Text(stringResource(modeNameRes(mode)), fontSize = 18.sp, fontWeight = FontWeight.Bold)
+                        Text(stringResource(modeNameRes(m)), fontSize = 18.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            text = stringResource(modeDescriptionRes(mode)),
+                            text = stringResource(modeDescriptionRes(m)),
                             modifier = Modifier.padding(horizontal = 8.dp),
                             style = MaterialTheme.typography.bodySmall,
                             textAlign = TextAlign.Center,
@@ -115,45 +115,37 @@ fun MenuScreen(
             }
         }
 
-        val variants = when (rules.mode) {
-            Mode.TIME_ATTACK -> GameRules.TIME_VARIANTS
-            Mode.LIMITED_MOVES -> GameRules.MOVE_VARIANTS
-            else -> null
-        }
-        if (variants != null) {
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                for (v in variants) {
-                    val option = GameRules(rules.mode, v)
-                    Choice(
-                        selected = v == rules.variant,
-                        onClick = { onRules(option) },
-                        modifier = Modifier.weight(1f),
-                        verticalPadding = 10,
-                    ) {
-                        Text(variantLabel(option) ?: "", fontSize = 16.sp, fontWeight = FontWeight.Bold)
+        when (mode) {
+            Mode.TIME_ATTACK, Mode.LIMITED_MOVES -> {
+                val variants = if (mode == Mode.TIME_ATTACK) GameRules.TIME_VARIANTS else GameRules.MOVE_VARIANTS
+                ChipRow {
+                    for (v in variants) {
+                        val option = GameRules(mode, v)
+                        Chip(variantLabel(option) ?: "", v == rules.variant) { vm.selectRules(option) }
                     }
                 }
             }
-            Spacer(Modifier.height(12.dp))
+            Mode.VERSUS -> VersusOptions(vm)
+            else -> Unit
         }
 
         Spacer(Modifier.height(8.dp))
         Button(
-            onClick = onPlay,
+            onClick = vm::play,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(60.dp),
             shape = RoundedCornerShape(14.dp),
         ) {
             Text(
-                text = stringResource(if (hasSavedGame) R.string.continue_game else R.string.play),
+                text = stringResource(if (vm.canContinue()) R.string.continue_game else R.string.play),
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
         Spacer(Modifier.height(12.dp))
         QuietButton(
-            onClick = onScores,
+            onClick = vm::showScores,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(52.dp),
@@ -163,12 +155,80 @@ fun MenuScreen(
     }
 }
 
-/** The rules a mode starts with when first picked: the middle duration or budget. */
-private fun defaultRules(mode: Mode): GameRules = when (mode) {
-    Mode.CLASSIC -> GameRules.CLASSIC
-    Mode.ZEN -> GameRules.ZEN
-    Mode.TIME_ATTACK -> GameRules(mode, GameRules.TIME_VARIANTS[1])
-    Mode.LIMITED_MOVES -> GameRules(mode, GameRules.MOVE_VARIANTS[1])
+@Composable
+private fun VersusOptions(vm: GameViewModel) {
+    val config = vm.versusConfig
+    SmallLabel(stringResource(R.string.win_rule))
+    ChipRow {
+        for (rule in VersusRule.entries) {
+            Chip(stringResource(ruleNameRes(rule)), rule == config.rule) {
+                if (rule != config.rule) vm.selectVersus(config.with(rule = rule, variant = VersusConfig.defaultVariant(rule)))
+            }
+        }
+    }
+    val variants = when (config.rule) {
+        VersusRule.RACE -> VersusConfig.RACE_TARGETS
+        VersusRule.TIMER -> VersusConfig.TIMER_SECONDS
+        VersusRule.LAST_STANDING -> null
+    }
+    if (variants != null) {
+        ChipRow {
+            for (v in variants) {
+                val label = if (config.rule == VersusRule.RACE) v.toString() else stringResource(R.string.minutes, v / 60)
+                Chip(label, v == config.variant) { vm.selectVersus(config.with(variant = v)) }
+            }
+        }
+    }
+    Text(
+        text = ruleDescription(config),
+        modifier = Modifier.padding(bottom = 4.dp),
+        style = MaterialTheme.typography.bodyMedium,
+        textAlign = TextAlign.Center,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
+    SmallLabel(stringResource(R.string.difficulty))
+    ChipRow {
+        for (d in Difficulty.entries) {
+            Chip(stringResource(difficultyNameRes(d)), d == config.difficulty) {
+                vm.selectVersus(config.with(difficulty = d))
+            }
+        }
+    }
+    val record = vm.versusRecord(vm.gridSize, config.difficulty)
+    if (record.played > 0) {
+        Text(
+            text = stringResource(R.string.versus_record, record.wins, record.losses, record.draws),
+            modifier = Modifier.padding(bottom = 8.dp),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onBackground,
+        )
+    }
+}
+
+@Composable
+private fun ChipRow(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
+    Row(
+        modifier = Modifier.padding(bottom = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        content = content,
+    )
+}
+
+@Composable
+private fun androidx.compose.foundation.layout.RowScope.Chip(label: String, selected: Boolean, onClick: () -> Unit) {
+    Choice(selected = selected, onClick = onClick, modifier = Modifier.weight(1f), verticalPadding = 10) {
+        Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+    }
+}
+
+@Composable
+private fun SmallLabel(text: String) {
+    Text(
+        text = text,
+        modifier = Modifier.padding(top = 4.dp, bottom = 8.dp),
+        style = MaterialTheme.typography.labelLarge,
+        color = MaterialTheme.colorScheme.onBackground,
+    )
 }
 
 @Composable

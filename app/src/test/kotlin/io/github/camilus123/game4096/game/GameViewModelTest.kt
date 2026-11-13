@@ -3,7 +3,15 @@ package io.github.camilus123.game4096.game
 import android.app.Application
 import androidx.test.core.app.ApplicationProvider
 import io.github.camilus123.game4096.core.Direction
+import android.os.Looper
+import android.os.SystemClock
+import io.github.camilus123.game4096.core.Difficulty
 import io.github.camilus123.game4096.core.EndReason
+import io.github.camilus123.game4096.core.Outcome
+import io.github.camilus123.game4096.core.VersusConfig
+import io.github.camilus123.game4096.core.VersusRule
+import org.robolectric.Shadows.shadowOf
+import java.time.Duration
 import io.github.camilus123.game4096.core.Game
 import io.github.camilus123.game4096.core.GameRules
 import io.github.camilus123.game4096.core.Mode
@@ -38,7 +46,7 @@ class GameViewModelTest {
 
     private fun launch(): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage) { now }
+        val vm = GameViewModel(app, storage, { now }, Runnable::run)
         vm.setForeground(true)
         return vm to storage
     }
@@ -358,5 +366,208 @@ class GameViewModelTest {
         vm.play()
         assertEquals(40L, vm.score)
         assertEquals(7, vm.moves)
+    }
+
+    // ---- Versus AI ---------------------------------------------------------------------
+
+    private val looper get() = shadowOf(Looper.getMainLooper())
+
+    /** As [launch], but on Robolectric's clock, so the opponent's pauses pass when the looper is idled. */
+    private fun launchVersus(config: VersusConfig, size: Int = 4): Pair<GameViewModel, Storage> {
+        val storage = Storage(app)
+        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run)
+        vm.setForeground(true)
+        vm.selectGrid(size)
+        vm.selectMode(Mode.VERSUS)
+        vm.selectVersus(config)
+        return vm to storage
+    }
+
+    private fun letPass(seconds: Long) = looper.idleFor(Duration.ofSeconds(seconds))
+
+    private val easyRace = VersusConfig(VersusRule.RACE, 256, Difficulty.EASY)
+
+    @Test fun theOpponentWaitsForThePlayersFirstMoveThenPlaysAtAHumanPace() {
+        val (vm, _) = launchVersus(easyRace)
+        vm.play()
+        val match = vm.match!!
+        var seen = 0
+        vm.onOpponentMoved = { seen++ }
+        letPass(10)
+        assertEquals("the opponent has not started", 0, match.bot.moves)
+        assertFalse(vm.matchStarted)
+
+        play(vm, 1)
+        assertTrue(vm.matchStarted)
+        letPass(10)
+        val made = match.bot.moves
+        assertTrue("in 10 s an easy opponent makes roughly 9 to 15 moves, made $made", made in 7..16)
+        assertEquals("the small board is told about every move", made, seen)
+        assertEquals(match.bot.score, vm.opponentScore)
+    }
+
+    @Test fun harderOpponentsMoveFaster() {
+        fun movesIn20s(d: Difficulty): Int {
+            Storage.resetForTests()
+            val (vm, _) = launchVersus(VersusConfig(VersusRule.LAST_STANDING, 0, d), size = 6)
+            vm.play()
+            play(vm, 1)
+            letPass(20)
+            val made = vm.match!!.bot.moves
+            vm.showMenu()
+            return made
+        }
+        val easy = movesIn20s(Difficulty.EASY)
+        val medium = movesIn20s(Difficulty.MEDIUM)
+        val hard = movesIn20s(Difficulty.HARD)
+        assertTrue("easy $easy, medium $medium, hard $hard", easy < medium && medium < hard)
+    }
+
+    @Test fun theOpponentStopsWhileTheAppIsInTheBackgroundOrTheMenuIsOpen() {
+        val (vm, _) = launchVersus(VersusConfig(VersusRule.LAST_STANDING, 0, Difficulty.MEDIUM), size = 5)
+        vm.play()
+        play(vm, 1)
+        letPass(5)
+        val match = vm.match!!
+        val before = match.bot.moves
+        assertTrue(before > 0)
+
+        vm.setForeground(false)
+        letPass(30)
+        assertEquals(before, match.bot.moves)
+        vm.setForeground(true)
+        letPass(5)
+        val afterResume = match.bot.moves
+        assertTrue(afterResume > before)
+
+        vm.showMenu()
+        letPass(30)
+        assertEquals(afterResume, match.bot.moves)
+    }
+
+    @Test fun aRaceIsDecidedCountedOnceAndNotResumed() {
+        val (vm, storage) = launchVersus(easyRace)
+        vm.play()
+        play(vm, 1) // then the player does nothing: the opponent either makes 256 or gets stuck
+        var waited = 0
+        while (vm.outcome == Outcome.UNDECIDED && waited++ < 200) letPass(10)
+        assertTrue("the match never ended", vm.outcome != Outcome.UNDECIDED)
+        val match = vm.match!!
+        if (match.bot.maxExponent >= 8) assertEquals(Outcome.BOT_WON, vm.outcome) else assertEquals(Outcome.PLAYER_WON, vm.outcome)
+        assertFalse("no moves after the result", vm.canAcceptMove())
+        val botMoves = match.bot.moves
+        letPass(20)
+        assertEquals("the opponent stops too", botMoves, match.bot.moves)
+        assertEquals(1, vm.versusRecord.played)
+        assertFalse(vm.canContinue())
+        storage.flush()
+
+        val storage2 = Storage(app)
+        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run)
+        assertEquals("a finished match is not reopened", Screen.MENU, again.screen)
+        assertEquals(Mode.VERSUS, again.mode)
+        assertEquals(easyRace, again.versusConfig)
+        assertEquals(1, storage2.versusRecord(4, Difficulty.EASY).played)
+        assertEquals("other difficulties and grids have their own record", 0, storage2.versusRecord(4, Difficulty.HARD).played)
+        assertEquals(0, storage2.versusRecord(5, Difficulty.EASY).played)
+    }
+
+    @Test fun aTimedMatchEndsOnTheClockAndGoesToTheHigherScore() {
+        val (vm, _) = launchVersus(VersusConfig(VersusRule.TIMER, 120, Difficulty.MEDIUM), size = 5)
+        vm.play()
+        assertEquals(120_000L, vm.displayTimeMs)
+        letPass(30)
+        assertEquals("the clock waits for the first move", 120_000L, vm.displayTimeMs)
+        play(vm, 1)
+        letPass(60)
+        assertEquals(Outcome.UNDECIDED, vm.outcome)
+        assertTrue("about a minute left, shows ${vm.displayTimeMs}", vm.displayTimeMs in 59_000L..61_000L)
+        letPass(61)
+        assertEquals(0L, vm.displayTimeMs)
+        assertEquals("the opponent scored for two minutes, the player made one move", Outcome.BOT_WON, vm.outcome)
+        assertEquals(1, vm.versusRecord.losses)
+    }
+
+    @Test fun anUnfinishedMatchComesBackAfterARestart() {
+        val config = VersusConfig(VersusRule.TIMER, 180, Difficulty.HARD)
+        val (vm, storage) = launchVersus(config, size = 5)
+        vm.play()
+        play(vm, 6)
+        letPass(20)
+        vm.setForeground(false) // the app is closed
+        val playerScore = vm.score
+        val botScore = vm.opponentScore
+        val botMoves = vm.match!!.bot.moves
+        val timeLeft = vm.displayTimeMs
+        assertTrue(botMoves > 0)
+        storage.flush()
+
+        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run)
+        assertEquals(Screen.GAME, again.screen)
+        val match = again.match!!
+        assertEquals(config, match.config)
+        assertEquals(5, match.player.size)
+        assertEquals(playerScore, again.score)
+        assertEquals(botScore, again.opponentScore)
+        assertEquals(botMoves, match.bot.moves)
+        assertEquals(timeLeft, again.displayTimeMs)
+        assertTrue(again.matchStarted)
+
+        again.setForeground(true)
+        letPass(5)
+        assertTrue("the opponent carries on", match.bot.moves > botMoves)
+    }
+
+    @Test fun continueIsOfferedOnlyForTheSameSetup() {
+        val (vm, _) = launchVersus(easyRace)
+        assertFalse(vm.canContinue())
+        vm.play()
+        play(vm, 2)
+        val match = vm.match
+        vm.showMenu()
+        assertTrue(vm.canContinue())
+        vm.selectVersus(easyRace.with(difficulty = Difficulty.HARD))
+        assertFalse("a different difficulty is a different match", vm.canContinue())
+        vm.selectGrid(5)
+        vm.selectVersus(easyRace)
+        assertFalse(vm.canContinue())
+        vm.selectGrid(4)
+        assertTrue(vm.canContinue())
+        vm.play()
+        assertEquals(2, vm.moves)
+        assertNotSame("it is a reloaded copy of the same match", match, vm.match)
+    }
+
+    @Test fun abandoningAMatchIsNotCountedAndStartsAFreshOne() {
+        val (vm, _) = launchVersus(easyRace)
+        vm.play()
+        play(vm, 3)
+        letPass(5)
+        val old = vm.match
+        vm.newGame()
+        assertNotSame(old, vm.match)
+        assertEquals(0, vm.moves)
+        assertEquals(0L, vm.opponentScore)
+        assertFalse(vm.matchStarted)
+        assertEquals(0, vm.versusRecord.played)
+        letPass(10)
+        assertEquals("a stale answer from the old match must not move the new opponent", 0, vm.match!!.bot.moves)
+    }
+
+    @Test fun versusLeavesSinglePlayerSavesAndScoresAlone() {
+        val (vm, storage) = launch()
+        vm.play()
+        play(vm, 9)
+        vm.showMenu()
+        vm.selectMode(Mode.VERSUS)
+        vm.play()
+        play(vm, 2)
+        vm.showMenu()
+        vm.selectMode(Mode.CLASSIC)
+        assertTrue(vm.canContinue())
+        vm.play()
+        assertEquals(9, vm.moves)
+        assertNull(vm.match)
+        assertTrue(storage.scores(classic4).isEmpty)
     }
 }

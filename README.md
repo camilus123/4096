@@ -3,9 +3,9 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: milestone 4 of 8.** Classic, Zen, Time attack and Limited moves are playable on all
-three grids, with autosave and high scores per grid and mode. Versus AI and audio are not
-built yet.
+**Status: milestone 5 of 8.** All five modes are playable on all three grids, including Versus
+AI with a live opponent board, three win rules and three difficulties. Autosave and scores
+work throughout. There is no audio yet, and no settings screen.
 
 | Milestone | State |
 |---|---|
@@ -13,8 +13,8 @@ built yet.
 | 2. Playable Classic on all grids | done |
 | 3. Saving and high scores | done |
 | 4. Zen, Time attack, Limited moves | done |
-| 5. Versus AI | next |
-| 6. Audio | |
+| 5. Versus AI | done |
+| 6. Audio | next |
 | 7. Quality levels and performance tuning | |
 | 8. Polish and release build | |
 
@@ -46,6 +46,13 @@ the release build in milestone 8.
   attack clock, the move budget, Zen's undo and "stuck" state, and when a game counts as won
   or over. `GameRules` names a mode plus its duration or budget and gives each its own save
   slot and score table.
+- `Bot` is the computer opponent and `VersusMatch` is a match against it: two boards under
+  the same rules and spawn odds, plus the rule that picks the winner. Easy looks one move
+  ahead and often plays at random; Medium searches two moves deep and sometimes slips; Hard
+  runs a deeper expectimax search (two to four moves, deeper as the board fills) over a
+  heuristic that likes big tiles along a snake from one corner, empty cells and smooth
+  neighbours. On 4x4 Easy typically tops out at 128 to 256, Medium at 256 to 1024, and Hard
+  at 2048 to 4096.
 - `app/` is the Android app. Menus and the game screen frame are Jetpack Compose; the board
   itself is `BoardView`, a plain `View` drawn on a Canvas. It allocates nothing per frame,
   takes its clock from the Choreographer's vsync timestamp, and asks for frames only while
@@ -54,6 +61,10 @@ the release build in milestone 8.
   preferences. Reads come from memory; writes go to disk on one background thread. The text
   formats (`SaveCodec`, `ScoreTable`) live in `core/` and reject damaged data instead of
   crashing. One save slot and one score table exist per grid size and mode.
+- In Versus the opponent thinks on its own thread against a copy of its board. The move is
+  applied on the main thread after a human-like pause (about 0.9 s on Easy, 0.6 s on Medium,
+  0.4 s on Hard), so the search cannot cost the player a frame. The opponent's board is a
+  second, smaller `BoardView`.
 - The board view is tested on the JVM with Robolectric's native graphics: the tests render
   real boards, check tile colours pixel by pixel, and drive swipes and the animation clock.
   Other tests restart the view model against the same storage to check that saves and scores

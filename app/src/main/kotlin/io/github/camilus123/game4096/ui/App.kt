@@ -33,21 +33,17 @@ fun App(vm: GameViewModel = viewModel()) {
             when (vm.screen) {
                 Screen.GAME -> {
                     BackHandler { vm.showMenu() }
-                    GameScreen(vm = vm, dark = dark, onMenu = vm::showMenu)
+                    if (vm.match != null) {
+                        VersusScreen(vm = vm, dark = dark, onMenu = vm::showMenu)
+                    } else {
+                        GameScreen(vm = vm, dark = dark, onMenu = vm::showMenu)
+                    }
                 }
                 Screen.SCORES -> {
                     BackHandler { vm.showMenu() }
                     ScoresScreen(vm = vm, onBack = vm::showMenu)
                 }
-                Screen.MENU -> MenuScreen(
-                    gridSize = vm.gridSize,
-                    rules = vm.rules,
-                    hasSavedGame = vm.hasSavedGame(vm.gridSize, vm.rules),
-                    onGridSize = vm::selectGrid,
-                    onRules = vm::selectRules,
-                    onPlay = vm::play,
-                    onScores = vm::showScores,
-                )
+                Screen.MENU -> MenuScreen(vm)
             }
         }
     }

@@ -27,6 +27,7 @@ import androidx.compose.ui.unit.sp
 import io.github.camilus123.game4096.R
 import io.github.camilus123.game4096.core.Rules
 import io.github.camilus123.game4096.core.ScoreTable
+import io.github.camilus123.game4096.core.Difficulty
 import io.github.camilus123.game4096.core.GameRules
 import io.github.camilus123.game4096.game.GameViewModel
 import java.text.DateFormat
@@ -74,6 +75,7 @@ fun ScoresScreen(vm: GameViewModel, onBack: () -> Unit) {
                         shown++
                     }
                 }
+                if (VersusBox(vm, size)) shown++
                 if (shown == 0) {
                     Text(
                         text = stringResource(R.string.no_scores),
@@ -146,4 +148,40 @@ private fun Cell(text: String, modifier: Modifier, align: TextAlign, bold: Boole
         fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
+}
+
+/** Wins and losses against each difficulty on one grid. Draws nothing and returns false if none were played. */
+@Composable
+private fun VersusBox(vm: GameViewModel, size: Int): Boolean {
+    if (Difficulty.entries.none { vm.versusRecord(size, it).played > 0 }) return false
+    val scheme = MaterialTheme.colorScheme
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 4.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(scheme.surfaceVariant)
+            .padding(horizontal = 14.dp, vertical = 10.dp),
+    ) {
+        Text(
+            text = stringResource(R.string.mode_versus),
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.Bold,
+            color = scheme.onSurfaceVariant,
+        )
+        for (d in Difficulty.entries) {
+            val record = vm.versusRecord(size, d)
+            if (record.played == 0) continue
+            Row(Modifier.padding(top = 4.dp)) {
+                Cell(stringResource(difficultyNameRes(d)), Modifier.weight(1f), TextAlign.Start, bold = true)
+                Cell(
+                    stringResource(R.string.versus_record, record.wins, record.losses, record.draws),
+                    Modifier.weight(2.4f),
+                    TextAlign.End,
+                    bold = false,
+                )
+            }
+        }
+    }
+    return true
 }

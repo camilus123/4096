@@ -1,7 +1,11 @@
 package io.github.camilus123.game4096.data
 
 import android.content.Context
+import io.github.camilus123.game4096.core.Difficulty
+import io.github.camilus123.game4096.core.Outcome
 import io.github.camilus123.game4096.core.SaveCodec
+import io.github.camilus123.game4096.core.VersusMatch
+import io.github.camilus123.game4096.core.VersusRecord
 import io.github.camilus123.game4096.core.SavedGame
 import io.github.camilus123.game4096.core.ScoreEntry
 import io.github.camilus123.game4096.core.ScoreTable
@@ -15,6 +19,7 @@ data class GameKey(val size: Int, val modeId: String) {
 
     companion object {
         const val CLASSIC = "classic"
+        const val VERSUS = "versus"
 
         fun parse(id: String?): GameKey? {
             if (id == null) return null
@@ -88,6 +93,49 @@ class Storage(context: Context) {
         return rank
     }
 
+    // ---- Versus AI -------------------------------------------------------------------
+
+    private val versus = appContext.getSharedPreferences("versus", Context.MODE_PRIVATE)
+    private val versusSaveCache = HashMap<Int, String?>()
+    private val versusRecordCache = HashMap<String, VersusRecord>()
+
+    /** The unfinished match on this grid, if there is one. Each call builds a fresh copy. */
+    fun loadVersus(size: Int): VersusMatch? {
+        if (!versusSaveCache.containsKey(size)) versusSaveCache[size] = saves.getString("versus_$size", null)
+        val match = VersusMatch.decode(versusSaveCache[size]) ?: return null
+        return if (match.player.size == size) match else null
+    }
+
+    fun saveVersus(size: Int, encoded: String) {
+        versusSaveCache[size] = encoded
+        io.execute { saves.edit().putString("versus_$size", encoded).commit() }
+    }
+
+    fun clearVersus(size: Int) {
+        versusSaveCache[size] = null
+        io.execute { saves.edit().remove("versus_$size").commit() }
+    }
+
+    fun versusRecord(size: Int, difficulty: Difficulty): VersusRecord {
+        val id = "${size}_${difficulty.id}"
+        return versusRecordCache.getOrPut(id) { VersusRecord.decode(versus.getString(id, null)) }
+    }
+
+    fun addVersusResult(size: Int, difficulty: Difficulty, outcome: Outcome): VersusRecord {
+        val id = "${size}_${difficulty.id}"
+        val updated = versusRecord(size, difficulty).plus(outcome)
+        versusRecordCache[id] = updated
+        io.execute { versus.edit().putString(id, updated.encode()).commit() }
+        return updated
+    }
+
+    /** Id of the Versus setup last chosen in the menu (see VersusConfig.id). */
+    var lastVersusId: String?
+        get() = session.getString(KEY_VERSUS, null)
+        set(value) {
+            session.edit().putString(KEY_VERSUS, value).apply()
+        }
+
     // ---- Session -----------------------------------------------------------------------
 
     /** The game that was on screen when the app was last used, if any. */
@@ -119,6 +167,7 @@ class Storage(context: Context) {
         private const val KEY_ACTIVE = "active_game"
         private const val KEY_GRID = "grid_size"
         private const val KEY_RULES = "rules"
+        private const val KEY_VERSUS = "versus"
 
         @Volatile private var instance: Storage? = null
 
