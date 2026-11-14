@@ -10,6 +10,7 @@
     <string name="mode_time">Time attack</string>
     <string name="mode_moves">Limited moves</string>
     <string name="mode_versus">Versus AI</string>
+    <string name="versus_title">Versus AI</string>
     <string name="mode_versus_desc">Play against the computer, each on your own board.</string>
     <string name="win_rule">How to win</string>
     <string name="rule_race">Race</string>
@@ -56,6 +57,7 @@
     <string name="play">Play</string>
     <string name="continue_game">Continue</string>
     <string name="high_scores">High scores</string>
+    <string name="scores_button">High scores</string>
     <string name="settings">Settings</string>
     <string name="settings_sound">Sound</string>
     <string name="settings_effects">Effects</string>

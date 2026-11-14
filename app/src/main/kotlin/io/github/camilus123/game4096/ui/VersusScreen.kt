@@ -28,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -61,15 +62,18 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 Text(
-                    text = stringResource(R.string.mode_versus),
-                    fontSize = 26.sp,
+                    text = stringResource(R.string.versus_title),
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.Black,
                     maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                     color = scheme.onBackground,
                 )
                 Text(
                     text = versusLabel(config) + " · " + stringResource(R.string.grid_size, match.player.size),
                     style = MaterialTheme.typography.labelLarge,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     color = scheme.onBackground,
                 )
             }

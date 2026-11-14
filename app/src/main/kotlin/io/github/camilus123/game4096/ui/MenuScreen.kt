@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.camilus123.game4096.R
@@ -151,7 +152,7 @@ fun MenuScreen(vm: GameViewModel) {
                     .weight(1f)
                     .height(52.dp),
             ) {
-                Text(text = stringResource(R.string.high_scores), fontSize = 16.sp, maxLines = 1)
+                ButtonLabel(stringResource(R.string.scores_button))
             }
             QuietButton(
                 onClick = vm::showSettings,
@@ -159,7 +160,7 @@ fun MenuScreen(vm: GameViewModel) {
                     .weight(1f)
                     .height(52.dp),
             ) {
-                Text(text = stringResource(R.string.settings), fontSize = 16.sp, maxLines = 1)
+                ButtonLabel(stringResource(R.string.settings))
             }
         }
     }
@@ -218,7 +219,9 @@ private fun VersusOptions(vm: GameViewModel) {
 @Composable
 private fun ChipRow(content: @Composable androidx.compose.foundation.layout.RowScope.() -> Unit) {
     Row(
-        modifier = Modifier.padding(bottom = 12.dp),
+        modifier = Modifier
+            .padding(bottom = 12.dp)
+            .height(IntrinsicSize.Min), // chips in a row share the height of the tallest
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         content = content,
     )
@@ -226,9 +229,39 @@ private fun ChipRow(content: @Composable androidx.compose.foundation.layout.RowS
 
 @Composable
 private fun androidx.compose.foundation.layout.RowScope.Chip(label: String, selected: Boolean, onClick: () -> Unit) {
-    Choice(selected = selected, onClick = onClick, modifier = Modifier.weight(1f), verticalPadding = 10) {
-        Text(label, fontSize = 15.sp, fontWeight = FontWeight.Bold, maxLines = 1)
+    Choice(
+        selected = selected,
+        onClick = onClick,
+        modifier = Modifier
+            .weight(1f)
+            .fillMaxHeight(),
+        verticalPadding = 10,
+    ) {
+        // Labels differ a lot in length between languages and fonts: a long one wraps onto a
+        // second, centred line instead of being cut off.
+        Text(
+            text = label,
+            modifier = Modifier.padding(horizontal = 6.dp),
+            fontSize = 15.sp,
+            lineHeight = 17.sp,
+            fontWeight = FontWeight.Bold,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
+}
+
+@Composable
+private fun ButtonLabel(text: String) {
+    Text(
+        text = text,
+        fontSize = 16.sp,
+        lineHeight = 18.sp,
+        textAlign = TextAlign.Center,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis,
+    )
 }
 
 @Composable

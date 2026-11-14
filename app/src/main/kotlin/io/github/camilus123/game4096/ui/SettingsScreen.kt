@@ -4,6 +4,8 @@ import androidx.activity.compose.LocalActivity
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
@@ -52,7 +54,8 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
             Text(
                 text = stringResource(R.string.settings),
                 modifier = Modifier.weight(1f),
-                fontSize = 32.sp,
+                fontSize = 28.sp,
+                lineHeight = 32.sp,
                 fontWeight = FontWeight.Black,
                 color = scheme.onBackground,
             )
@@ -79,7 +82,7 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
             }
 
             Heading(stringResource(R.string.settings_haptics))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Option(stringResource(R.string.settings_off), settings.haptics == HapticLevel.OFF) {
                     vm.setHaptics(HapticLevel.OFF)
                 }
@@ -92,7 +95,7 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
             }
 
             Heading(stringResource(R.string.settings_theme))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Option(stringResource(R.string.settings_system), settings.theme == ThemeChoice.SYSTEM) {
                     vm.updateSettings(settings.copy(theme = ThemeChoice.SYSTEM))
                 }
@@ -105,7 +108,7 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
             }
 
             Heading(stringResource(R.string.settings_language))
-            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 // Language names are shown in their own language, as is usual for a language picker.
                 Option(stringResource(R.string.settings_system), language == Languages.SYSTEM) {
                     activity?.let { Languages.set(it, Languages.SYSTEM) }
@@ -184,7 +187,7 @@ private fun RowScope.Option(label: String, selected: Boolean, onClick: () -> Uni
     val scheme = MaterialTheme.colorScheme
     Surface(
         onClick = onClick,
-        modifier = Modifier.weight(1f),
+        modifier = Modifier.weight(1f).fillMaxHeight(),
         shape = RoundedCornerShape(14.dp),
         color = if (selected) scheme.primary else scheme.background,
         contentColor = if (selected) scheme.onPrimary else scheme.onBackground,
@@ -192,11 +195,13 @@ private fun RowScope.Option(label: String, selected: Boolean, onClick: () -> Uni
     ) {
         Text(
             text = label,
-            modifier = Modifier.padding(vertical = 12.dp).fillMaxWidth(),
+            modifier = Modifier.padding(vertical = 12.dp, horizontal = 6.dp).fillMaxWidth(),
             textAlign = androidx.compose.ui.text.style.TextAlign.Center,
             fontSize = 15.sp,
+            lineHeight = 17.sp,
             fontWeight = FontWeight.Bold,
-            maxLines = 1,
+            maxLines = 2,
+            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
         )
     }
 }

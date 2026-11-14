@@ -48,8 +48,10 @@ fun ScoresScreen(vm: GameViewModel, onBack: () -> Unit) {
             Text(
                 text = stringResource(R.string.high_scores),
                 modifier = Modifier.weight(1f),
-                fontSize = 32.sp,
+                fontSize = 28.sp,
+                lineHeight = 32.sp,
                 fontWeight = FontWeight.Black,
+                maxLines = 2,
                 color = MaterialTheme.colorScheme.onBackground,
             )
             QuietButton(onClick = onBack) {
@@ -110,16 +112,17 @@ private fun ModeTable(modeName: String, table: ScoreTable, dateFormat: DateForma
             HeaderCell("#", Modifier.width(28.dp), TextAlign.Start)
             HeaderCell(stringResource(R.string.score), Modifier.weight(1.2f), TextAlign.Start)
             HeaderCell(stringResource(R.string.best_tile), Modifier.weight(1f), TextAlign.End)
-            HeaderCell(stringResource(R.string.moves), Modifier.weight(1f), TextAlign.End)
-            HeaderCell(stringResource(R.string.date), Modifier.weight(1.2f), TextAlign.End)
+            HeaderCell(stringResource(R.string.moves), Modifier.weight(0.9f), TextAlign.End)
+            HeaderCell(stringResource(R.string.date), Modifier.weight(1.3f), TextAlign.End)
         }
         table.entries.forEachIndexed { index, e ->
             Row(Modifier.padding(top = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 Cell((index + 1).toString(), Modifier.width(28.dp), TextAlign.Start, bold = false)
                 Cell(e.score.toString(), Modifier.weight(1.2f), TextAlign.Start, bold = true)
                 Cell(Rules.tileValue(e.maxExponent).toString(), Modifier.weight(1f), TextAlign.End, bold = false)
-                Cell(e.moves.toString(), Modifier.weight(1f), TextAlign.End, bold = false)
-                Cell(dateFormat.format(Date(e.timeMillis)), Modifier.weight(1.2f), TextAlign.End, bold = false)
+                Cell(e.moves.toString(), Modifier.weight(0.9f), TextAlign.End, bold = false)
+                // Some languages write short dates with spaces ("10. 11. 26"); there is no room for them.
+                Cell(dateFormat.format(Date(e.timeMillis)).replace(" ", ""), Modifier.weight(1.3f), TextAlign.End, bold = false)
             }
         }
     }
@@ -174,11 +177,12 @@ private fun VersusBox(vm: GameViewModel, size: Int): Boolean {
             if (record.played == 0) continue
             Row(Modifier.padding(top = 4.dp)) {
                 Cell(stringResource(difficultyNameRes(d)), Modifier.weight(1f), TextAlign.Start, bold = true)
-                Cell(
-                    stringResource(R.string.versus_record, record.wins, record.losses, record.draws),
-                    Modifier.weight(2.4f),
-                    TextAlign.End,
-                    bold = false,
+                // The record takes the width it needs; the difficulty name gets the rest.
+                Text(
+                    text = stringResource(R.string.versus_record, record.wins, record.losses, record.draws),
+                    maxLines = 1,
+                    fontSize = 15.sp,
+                    color = scheme.onSurfaceVariant,
                 )
             }
         }

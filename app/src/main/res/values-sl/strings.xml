@@ -8,6 +8,7 @@
     <string name="mode_time">Na čas</string>
     <string name="mode_moves">Omejene poteze</string>
     <string name="mode_versus">Proti računalniku</string>
+    <string name="versus_title">Dvoboj</string>
     <string name="mode_versus_desc">Igraj proti računalniku, vsak na svoji plošči.</string>
     <string name="win_rule">Kako zmagaš</string>
     <string name="rule_race">Dirka</string>
@@ -53,7 +54,8 @@
     <string name="stuck_text">Razveljavi potezo ali začni novo ploščo.</string>
     <string name="play">Igraj</string>
     <string name="continue_game">Nadaljuj</string>
-    <string name="high_scores">Najboljši rezultati</string>
+    <string name="high_scores">Rezultati</string>
+    <string name="scores_button">Rezultati</string>
     <string name="settings">Nastavitve</string>
     <string name="settings_sound">Zvok</string>
     <string name="settings_effects">Učinki</string>

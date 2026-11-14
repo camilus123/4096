@@ -93,6 +93,38 @@ class ScreenRenderTest {
     @Test @Config(qualifiers = "w411dp-h914dp-night-420dpi")
     fun darkScreens() = renderAll("dark")
 
+    /**
+     * Slovenian words are longer than English ones and some phones are narrow: this is the
+     * combination where labels get cut off. Renders the screens with the most text on them.
+     */
+    @Test @Config(qualifiers = "sl-w360dp-h800dp-420dpi")
+    fun slovenianOnANarrowPhone() {
+        seed()
+        storage().addVersusResult(4, Difficulty.HARD, Outcome.BOT_WON)
+        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val vm = androidx.lifecycle.ViewModelProvider(activity)[io.github.camilus123.game4096.game.GameViewModel::class.java]
+        vm.selectMode(Mode.VERSUS)
+        vm.selectVersus(VersusConfig(VersusRule.LAST_STANDING, 0, Difficulty.HARD))
+        capture(activity, "sl-menu-versus")
+        vm.play()
+        capture(activity, "sl-versus")
+        vm.showMenu()
+        vm.selectRules(GameRules(Mode.LIMITED_MOVES, 100))
+        capture(activity, "sl-menu-moves")
+        vm.play()
+        capture(activity, "sl-game-moves")
+        vm.showMenu()
+        vm.selectRules(GameRules.ZEN)
+        vm.play()
+        capture(activity, "sl-zen")
+        vm.showMenu()
+        vm.showSettings()
+        capture(activity, "sl-settings")
+        vm.showMenu()
+        vm.showScores()
+        capture(activity, "sl-scores")
+    }
+
     private fun renderAll(prefix: String) {
         seed()
         val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
