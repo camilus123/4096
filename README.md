@@ -96,10 +96,17 @@ What is generated:
   Each is written into a circular buffer: notes and reverb that run past the end wrap
   around onto the start, so the loop point is part of the music rather than a cut.
 
-In the app, `AudioEngine` plays effects through `SoundPool` (the low-latency path) and music
-through a looping `MediaPlayer` on its own thread. Music requests audio focus, pauses for
-phone calls and other apps, and stops in the background. With music off, focus is never
-requested, so whatever was already playing on the phone keeps playing.
+In the app, `AudioEngine` plays effects through `SoundPool` (the low-latency path). Music is
+decoded once into memory and written to an `AudioTrack` by a small thread that goes from the
+last sample straight to the first, so the loop is exact on every phone; changing track fades
+the two across each other. Music requests audio focus, pauses for phone calls and other apps,
+and stops in the background. With music off, focus is never requested, so whatever was
+already playing on the phone keeps playing.
+
+## Permissions
+
+One: `VIBRATE`, for vibration on merges at a strength chosen in settings. No network access,
+no storage access, nothing else.
 
 ## Licence
 

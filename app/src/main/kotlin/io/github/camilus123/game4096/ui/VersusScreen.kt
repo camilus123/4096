@@ -163,7 +163,6 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     view.palette = palette
                     view.onMoved = vm::onMoved
                     view.moveGate = vm::canAcceptMove
-                    view.haptics = vm.settings.haptics
                     view.inputEnabled = outcome == Outcome.UNDECIDED
                     view.contentDescription = boardDescription
                     view.bind(match.player)

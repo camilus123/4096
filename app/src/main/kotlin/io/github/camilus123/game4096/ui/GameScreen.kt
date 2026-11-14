@@ -123,7 +123,6 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     view.palette = if (dark) BoardPalette.DARK else BoardPalette.LIGHT
                     view.onMoved = vm::onMoved
                     view.moveGate = vm::canAcceptMove
-                    view.haptics = vm.settings.haptics
                     view.inputEnabled = status == SessionStatus.PLAYING
                     view.contentDescription = boardDescription
                     view.bind(game)

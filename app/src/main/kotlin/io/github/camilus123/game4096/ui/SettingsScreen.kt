@@ -30,6 +30,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.camilus123.game4096.R
+import io.github.camilus123.game4096.data.HapticLevel
 import io.github.camilus123.game4096.data.Languages
 import io.github.camilus123.game4096.data.ThemeChoice
 import io.github.camilus123.game4096.game.GameViewModel
@@ -77,9 +78,17 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
                 vm.updateSettings(settings.copy(muted = it))
             }
 
-            Heading(stringResource(R.string.settings_feel))
-            SwitchRow(stringResource(R.string.settings_haptics), settings.haptics) {
-                vm.updateSettings(settings.copy(haptics = it))
+            Heading(stringResource(R.string.settings_haptics))
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Option(stringResource(R.string.settings_off), settings.haptics == HapticLevel.OFF) {
+                    vm.setHaptics(HapticLevel.OFF)
+                }
+                Option(stringResource(R.string.settings_normal), settings.haptics == HapticLevel.NORMAL) {
+                    vm.setHaptics(HapticLevel.NORMAL)
+                }
+                Option(stringResource(R.string.settings_high), settings.haptics == HapticLevel.HIGH) {
+                    vm.setHaptics(HapticLevel.HIGH)
+                }
             }
 
             Heading(stringResource(R.string.settings_theme))

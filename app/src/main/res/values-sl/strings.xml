@@ -59,8 +59,10 @@
     <string name="settings_effects">Učinki</string>
     <string name="settings_music">Glasba</string>
     <string name="settings_mute">Utišaj vse</string>
-    <string name="settings_feel">Občutek</string>
-    <string name="settings_haptics">Vibriraj ob združitvah</string>
+    <string name="settings_haptics">Vibriranje ob združitvah</string>
+    <string name="settings_off">Izklopljeno</string>
+    <string name="settings_normal">Običajno</string>
+    <string name="settings_high">Močno</string>
     <string name="settings_theme">Tema</string>
     <string name="settings_system">Sistem</string>
     <string name="settings_light">Svetla</string>

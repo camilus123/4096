@@ -143,10 +143,18 @@ fun menuMusic(): Stereo {
     for (bar in 0 until song.bars) {
         val pass = bar / 8
         song.pad(bar, 0.10)
-        song.arpeggio(bar, if (pass == 2) wave else up, octave = 2, gain = if (pass == 0) 0.20 else 0.16)
-        if (pass >= 1) {
-            song.bassLine(bar, doubleArrayOf(0.0, 2.0), doubleArrayOf(1.8, 1.5), 0.26)
-            song.melody(bar, motifs[bar - 8], scale, 0.17)
+        // The arpeggio and the bass never stop, so the bar where the track loops sounds like
+        // any other bar. Only the melody comes and goes, and it fades out before the loop.
+        song.arpeggio(bar, if (pass == 2) wave else up, octave = 2, gain = 0.17)
+        song.bassLine(bar, doubleArrayOf(0.0, 2.0), doubleArrayOf(1.8, 1.5), if (pass == 0) 0.22 else 0.26)
+        if (bar in 6..21) {
+            val fade = when (bar) {
+                6 -> 0.5
+                20 -> 0.7
+                21 -> 0.4
+                else -> 1.0
+            }
+            song.melody(bar, motifs[bar - 6], scale, 0.17 * fade)
         }
     }
     return song.master(wet = 0.24)
@@ -173,9 +181,18 @@ fun gameMusic(): Stereo {
         if (!breakdown) {
             song.arpeggio(bar, if (section == 2) b else a, octave = 2, gain = 0.17)
             song.bassLine(bar, groove, grooveLengths, 0.27)
-            song.drums(bar, kickGain = if (section == 0) 0.0 else 0.30, hatGain = 0.035)
+            // The same drums in the first section as in the last, so the loop point is not
+            // the moment the kick drops out.
+            song.drums(bar, kickGain = 0.28, hatGain = 0.035)
         }
-        if (section >= 1) song.melody(bar, motifs[bar - 8], scale, 0.16)
+        if (bar in 6..29) {
+            val fade = when (bar) {
+                6, 29 -> 0.45
+                7, 28 -> 0.75
+                else -> 1.0
+            }
+            song.melody(bar, motifs[bar - 6], scale, 0.16 * fade)
+        }
     }
     return song.master(wet = 0.20)
 }

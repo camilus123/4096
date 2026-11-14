@@ -168,7 +168,9 @@ class Storage(context: Context) {
             effectsVolume = settingsPrefs.getFloat("effects_volume", d.effectsVolume).coerceIn(0f, 1f),
             musicVolume = settingsPrefs.getFloat("music_volume", d.musicVolume).coerceIn(0f, 1f),
             muted = settingsPrefs.getBoolean("muted", d.muted),
-            haptics = settingsPrefs.getBoolean("haptics", d.haptics),
+            // "haptics" is the on/off switch of version 0.6.0; a player who turned it off stays off.
+            haptics = HapticLevel.parse(settingsPrefs.getString("haptic_level", null))
+                ?: if (settingsPrefs.getBoolean("haptics", true)) d.haptics else HapticLevel.OFF,
             theme = ThemeChoice.parse(settingsPrefs.getString("theme", null)),
         )
     }
@@ -178,7 +180,7 @@ class Storage(context: Context) {
             .putFloat("effects_volume", s.effectsVolume)
             .putFloat("music_volume", s.musicVolume)
             .putBoolean("muted", s.muted)
-            .putBoolean("haptics", s.haptics)
+            .putString("haptic_level", s.haptics.id)
             .putString("theme", s.theme.id)
             .apply()
     }

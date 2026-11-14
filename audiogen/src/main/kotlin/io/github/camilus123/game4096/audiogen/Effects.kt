@@ -32,28 +32,37 @@ fun slideEffect(): Stereo {
 
 /**
  * Two tiles merging into the tile with this [exponent] (2 is the "4" tile).
- * Each bigger tile is one step higher on a pentatonic scale; from 128 up an octave joins in,
- * and from 1024 up the note becomes a small rising chord, so big merges sound bigger.
+ *
+ * Small merges happen on almost every move, so they are kept short, round and soft: a
+ * marimba-like knock with hardly any overtones. Each bigger tile is one step higher on a
+ * pentatonic scale. From 128 up the note rings longer and an octave joins in, and from 1024
+ * up it becomes a small rising chord, so the rare big merges are the ones that stand out.
  */
 fun mergeEffect(exponent: Int): Stereo {
     val step = (exponent - 2).coerceIn(0, PENTATONIC.size - 1)
     val midi = 57.0 + PENTATONIC[step] // starts on A3
+    val hz = midiToHz(midi)
     val big = exponent >= 7
     val huge = exponent >= 10
-    val length = if (huge) 0.75 else if (big) 0.5 else 0.32
-    val out = oneShot(length + 0.25)
-    val hz = midiToHz(midi)
-    out.add(0, seconds(length), 1.0, 0.0) { t -> epiano(hz, t, length * 0.6) + 0.35 * bell(hz * 2.0, t) * exp(-t * 4.0) }
-    if (big) {
-        out.add(seconds(0.035), seconds(length), 0.45, 0.25) { t -> bell(hz * 2.0, t) }
+    if (!big) {
+        val out = oneShot(0.22)
+        out.add(0, seconds(0.2), 1.0, 0.0) { t ->
+            val w = TAU * hz * t
+            (sin(w) * exp(-t * 16.0) + 0.16 * sin(2.0 * w) * exp(-t * 28.0)) * envelope(t, 0.006, 0.2, 0.02)
+        }
+        return out.finish(0.8, wet = 0.04)
     }
+    val length = if (huge) 0.75 else 0.45
+    val out = oneShot(length + 0.25)
+    out.add(0, seconds(length), 1.0, 0.0) { t -> epiano(hz, t, length * 0.5) * exp(-t * 2.0) }
+    out.add(seconds(0.035), seconds(length), 0.35, 0.25) { t -> bell(hz * 2.0, t) * exp(-t * 2.0) }
     if (huge) {
         // Root, fifth, octave in quick succession.
         out.add(seconds(0.07), seconds(length), 0.5, -0.3) { t -> bell(midiToHz(midi + 7.0), t) }
         out.add(seconds(0.14), seconds(length), 0.55, 0.3) { t -> bell(midiToHz(midi + 12.0), t) }
         out.add(0, seconds(0.5), 0.5, 0.0) { t -> bass(hz / 2.0, t, 0.3) }
     }
-    return out.finish(0.8, wet = if (big) 0.18 else 0.10)
+    return out.finish(0.8, wet = 0.16)
 }
 
 /** A new tile appearing: a tiny soft blip. */

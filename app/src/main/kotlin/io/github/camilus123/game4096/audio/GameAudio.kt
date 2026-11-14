@@ -12,11 +12,15 @@ enum class Sfx(val resource: Int, val volume: Float) {
     OVER(R.raw.sfx_over, 0.90f),
 }
 
-enum class MusicTrack(val resource: Int) {
-    NONE(0),
-    MENU(R.raw.music_menu),
-    GAME(R.raw.music_game),
-    ZEN(R.raw.music_zen),
+/**
+ * [frames] is the exact length of the loop as the generator wrote it (see the lengths printed
+ * by tools/generate-audio.sh, times 44100). Playback loops at exactly this point.
+ */
+enum class MusicTrack(val resource: Int, val frames: Int) {
+    NONE(0, 0),
+    MENU(R.raw.music_menu, 3_024_000),
+    GAME(R.raw.music_game, 3_386_880),
+    ZEN(R.raw.music_zen, 4_233_600),
 }
 
 /**

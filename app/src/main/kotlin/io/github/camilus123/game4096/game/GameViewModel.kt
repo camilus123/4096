@@ -12,6 +12,7 @@ import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
 import io.github.camilus123.game4096.audio.AudioEngine
 import io.github.camilus123.game4096.audio.GameAudio
+import io.github.camilus123.game4096.audio.Haptics
 import io.github.camilus123.game4096.audio.MusicTrack
 import io.github.camilus123.game4096.audio.Sfx
 import io.github.camilus123.game4096.core.Bot
@@ -29,6 +30,7 @@ import io.github.camilus123.game4096.core.VersusConfig
 import io.github.camilus123.game4096.core.VersusMatch
 import io.github.camilus123.game4096.core.VersusRecord
 import io.github.camilus123.game4096.data.GameKey
+import io.github.camilus123.game4096.data.HapticLevel
 import io.github.camilus123.game4096.data.Settings
 import io.github.camilus123.game4096.data.Storage
 import java.util.concurrent.Executor
@@ -54,6 +56,7 @@ class GameViewModel(
     private val clock: () -> Long,
     private val botExecutor: Executor,
     private val audio: GameAudio,
+    private val vibrate: (exponent: Int, level: HapticLevel) -> Unit,
 ) : AndroidViewModel(application) {
 
     @Suppress("unused") // used by the default ViewModel factory
@@ -63,6 +66,7 @@ class GameViewModel(
         SystemClock::uptimeMillis,
         Executors.newSingleThreadExecutor { r -> Thread(r, "opponent").apply { priority = Thread.NORM_PRIORITY - 1 } },
         AudioEngine.get(application),
+        Haptics(application)::merge,
     )
 
     var screen by mutableStateOf(Screen.MENU)
@@ -222,6 +226,12 @@ class GameViewModel(
 
     /** A sample of the effects at the current volume, for the settings screen. */
     fun previewEffects() = audio.playMerge(5)
+
+    /** Sets the vibration strength and lets the player feel it. */
+    fun setHaptics(level: HapticLevel) {
+        updateSettings(settings.copy(haptics = level))
+        vibrate(5, level)
+    }
 
     fun showSettings() {
         audio.play(Sfx.TAP)
@@ -416,7 +426,12 @@ class GameViewModel(
 
     private var pendingMerge = 0
     private val arrivalSound = Runnable {
-        if (pendingMerge > 0) audio.playMerge(pendingMerge) else audio.play(Sfx.SPAWN)
+        if (pendingMerge > 0) {
+            audio.playMerge(pendingMerge)
+            vibrate(pendingMerge, settings.haptics)
+        } else {
+            audio.play(Sfx.SPAWN)
+        }
     }
 
     /** Takes the time since the last call off whichever clock is running. Internal so tests can drive it. */

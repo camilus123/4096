@@ -103,10 +103,26 @@ Choices confirmed by the owner, and choices made where the build brief was silen
 - **The opponent's moves in Versus are silent.** Two boards' worth of effects would be noise.
 - **Music is off the moment its volume is 0 or everything is muted**, and audio focus is
   then released, so the player's own music or podcast is left alone.
-- **Default volumes: effects 80, music 50.**
-- **Vibration uses the view's haptic feedback**, which needs no permission. Merges that make
-  128 or more get a firmer tap.
+- **Default volumes: effects 50, music 50** (effects were 80 until the owner asked for 50).
+- **Vibration has three settings: Off, Normal, High** (owner's request, after the first
+  version was too weak to notice). It drives the motor directly, which needs the `VIBRATE`
+  permission, the app's only one. Normal is a short tap at about half strength, High is
+  full strength and twice as long; merges of 128 and up are longer at both levels. The
+  system's view haptics, used at first, have one fixed light strength and no permission.
 - **Language: on Android 13+ the in-app choice is the system's per-app language** and the
   game is listed under the phone's app language settings. On Android 8 to 12 the choice is
   stored by the app and applied at start-up.
 - **Theme choice (System / Light / Dark) is in settings**; status bar icons follow it.
+
+## Changed after the owner listened to it (2026-11-14)
+
+- **Music loops through an in-memory AudioTrack, not MediaPlayer.** The loop restart was
+  audible in the menu and gameplay tracks. Two causes were possible and both were removed:
+  MediaPlayer's looping can leave a short gap, so tracks are now decoded once and looped
+  sample-exactly; and the arrangement dropped the bass (menu) or the kick (gameplay) at the
+  loop point, so those now play through it and only the melody comes and goes. Cost: two
+  decoded tracks are kept in memory, about 27 MB.
+- **Tracks crossfade** over about 1.4 seconds when going between menu and game.
+- **Small merges are soft, short knocks and play quieter than big ones.** The first version
+  used the same bright note for every merge, which got tiresome. Volume now rises with the
+  tile, so the frequent small merges sit in the background.

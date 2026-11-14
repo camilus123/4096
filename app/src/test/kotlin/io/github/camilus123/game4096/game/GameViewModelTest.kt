@@ -9,6 +9,7 @@ import io.github.camilus123.game4096.audio.GameAudio
 import io.github.camilus123.game4096.audio.MusicTrack
 import io.github.camilus123.game4096.audio.Sfx
 import io.github.camilus123.game4096.core.Difficulty
+import io.github.camilus123.game4096.data.HapticLevel
 import io.github.camilus123.game4096.data.ThemeChoice
 import io.github.camilus123.game4096.core.EndReason
 import io.github.camilus123.game4096.core.Outcome
@@ -63,6 +64,10 @@ class GameViewModelTest {
 
     private val audio = RecordingAudio()
 
+    /** Every vibration asked for, as exponent to strength. */
+    private val felt = ArrayList<Pair<Int, HapticLevel>>()
+    private val vibrations: (Int, HapticLevel) -> Unit = { e, level -> felt.add(e to level) }
+
     /** Fake time for the Time attack clock; tests move it forward by hand. */
     private var now = 1_000_000L
 
@@ -70,7 +75,7 @@ class GameViewModelTest {
 
     private fun launch(): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage, { now }, Runnable::run, audio)
+        val vm = GameViewModel(app, storage, { now }, Runnable::run, audio, vibrations)
         vm.setForeground(true)
         return vm to storage
     }
@@ -399,7 +404,7 @@ class GameViewModelTest {
     /** As [launch], but on Robolectric's clock, so the opponent's pauses pass when the looper is idled. */
     private fun launchVersus(config: VersusConfig, size: Int = 4): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run, audio)
+        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run, audio, vibrations)
         vm.setForeground(true)
         vm.selectGrid(size)
         vm.selectMode(Mode.VERSUS)
@@ -487,7 +492,7 @@ class GameViewModelTest {
         storage.flush()
 
         val storage2 = Storage(app)
-        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run, audio)
+        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run, audio, vibrations)
         assertEquals("a finished match is not reopened", Screen.MENU, again.screen)
         assertEquals(Mode.VERSUS, again.mode)
         assertEquals(easyRace, again.versusConfig)
@@ -526,7 +531,7 @@ class GameViewModelTest {
         assertTrue(botMoves > 0)
         storage.flush()
 
-        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run, audio)
+        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run, audio, vibrations)
         assertEquals(Screen.GAME, again.screen)
         val match = again.match!!
         assertEquals(config, match.config)
@@ -655,7 +660,7 @@ class GameViewModelTest {
         storage.flush()
 
         val second = RecordingAudio()
-        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second)
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second, vibrations)
         assertEquals(SessionStatus.STUCK, again.status)
         assertTrue("reopening a stuck game is silent", second.effects.none { it == Sfx.OVER })
         again.undo()
@@ -664,22 +669,22 @@ class GameViewModelTest {
 
     @Test fun settingsAreAppliedAndRemembered() {
         val (vm, _) = launch()
-        assertEquals(0.8f, audio.effectsVolume)
+        assertEquals("effects and music both start at 50", 0.5f, audio.effectsVolume)
         assertEquals(0.5f, audio.musicVolume)
         assertFalse(audio.muted)
-        assertTrue(vm.settings.haptics)
+        assertEquals(HapticLevel.NORMAL, vm.settings.haptics)
 
-        vm.updateSettings(vm.settings.copy(effectsVolume = 0.25f, musicVolume = 0f, muted = true, haptics = false, theme = ThemeChoice.DARK))
+        vm.updateSettings(vm.settings.copy(effectsVolume = 0.25f, musicVolume = 0f, muted = true, haptics = HapticLevel.HIGH, theme = ThemeChoice.DARK))
         assertEquals(0.25f, audio.effectsVolume)
         assertEquals(0f, audio.musicVolume)
         assertTrue(audio.muted)
 
         val second = RecordingAudio()
-        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second)
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second, vibrations)
         assertEquals(0.25f, again.settings.effectsVolume)
         assertEquals(0f, again.settings.musicVolume)
         assertTrue(again.settings.muted)
-        assertFalse(again.settings.haptics)
+        assertEquals(HapticLevel.HIGH, again.settings.haptics)
         assertEquals(ThemeChoice.DARK, again.settings.theme)
         assertTrue("the saved volumes reach the audio at start-up", second.muted)
         assertEquals(0.25f, second.effectsVolume)
@@ -692,5 +697,44 @@ class GameViewModelTest {
         assertFalse(audio.inForeground)
         vm.setForeground(true)
         assertTrue(audio.inForeground)
+    }
+
+    @Test fun mergesVibrateAtTheChosenStrengthAndOnlyMerges() {
+        val (vm, _) = launch()
+        vm.play()
+        val g = vm.game!!
+        var i = 0
+        var merges = 0
+        while (merges < 3 && !g.isOver) {
+            felt.clear()
+            if (g.move(Direction.entries[i++ % 4]) < 0) continue
+            vm.onMoved()
+            looper.idleFor(Duration.ofMillis(200))
+            var biggest = 0
+            for (c in 0 until g.cellCount) if (g.lastTrace.merged[c]) biggest = maxOf(biggest, g.exponentAt(c))
+            if (biggest > 0) {
+                assertEquals(listOf(biggest to HapticLevel.NORMAL), felt)
+                merges++
+            } else {
+                assertTrue("a move without a merge does not vibrate", felt.isEmpty())
+            }
+        }
+        assertEquals(3, merges)
+    }
+
+    @Test fun choosingAVibrationStrengthLetsThePlayerFeelItAndIsRemembered() {
+        val (vm, _) = launch()
+        vm.setHaptics(HapticLevel.HIGH)
+        assertEquals(HapticLevel.HIGH, felt.last().second)
+        vm.setHaptics(HapticLevel.OFF)
+        assertEquals(HapticLevel.OFF, vm.settings.haptics)
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, RecordingAudio(), vibrations)
+        assertEquals(HapticLevel.OFF, again.settings.haptics)
+    }
+
+    @Test fun vibrationSwitchedOffInTheFirstAudioBuildStaysOff() {
+        app.getSharedPreferences("settings", 0).edit().putBoolean("haptics", false).commit()
+        val (vm, _) = launch()
+        assertEquals(HapticLevel.OFF, vm.settings.haptics)
     }
 }
