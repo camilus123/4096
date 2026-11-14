@@ -124,6 +124,7 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     view.onMoved = vm::onMoved
                     view.moveGate = vm::canAcceptMove
                     view.quality = vm.quality
+                    view.limitTo60 = vm.settings.limitFps
                     view.inputEnabled = status == SessionStatus.PLAYING
                     view.contentDescription = boardDescription
                     view.bind(game)

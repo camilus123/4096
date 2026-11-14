@@ -74,6 +74,18 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         }
 
     /**
+     * Draw at most about 60 times a second, whatever the screen's refresh rate. The battery
+     * saver first asks the phone to switch the screen to 60 Hz; some phones refuse, so the
+     * board also paces itself: on a faster screen it draws on every other refresh, which
+     * keeps motion even. Animations run on timestamps, so their speed does not change.
+     */
+    var limitTo60: Boolean = false
+
+    /** How many times the board has been drawn. For measuring the real frame rate. */
+    var drawCount: Int = 0
+        private set
+
+    /**
      * Lets a board that takes no touches still run High quality's ambient motion. The
      * performance test needs this; the opponent's small board in Versus does not want it.
      */
@@ -333,6 +345,11 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
 
     override fun doFrame(frameTimeNanos: Long) {
         framePosted = false
+        if (limitTo60 && frameTimeNanos - lastFrameNanos in 0L until MIN_LIMITED_FRAME_NANOS) {
+            // Too soon after the last frame we handled: sit this refresh out.
+            if (wantsFrames) postFrame()
+            return
+        }
         // Time since the previous frame, for particles and ambient motion. Capped so a pause
         // (or the first frame after resting) does not make things jump.
         var deltaMs = (frameTimeNanos - lastFrameNanos) / 1_000_000f
@@ -497,6 +514,7 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     private fun cellY(index: Int): Float = boardTop + gap + (index / size) * (cell + gap)
 
     override fun onDraw(canvas: Canvas) {
+        drawCount++
         if (boardSide <= 0f) return
         val p = palette
         val q = quality
@@ -565,11 +583,11 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
             if (q == Quality.HIGH && exponent >= GLOW_EXPONENT && (interactive || ambientWhenPassive)) {
                 // A soft halo made of three translucent, slightly larger copies of the tile.
                 // Each tile pulses on its own phase so the board does not throb in unison.
-                val pulse = 0.55f + 0.45f * sin(ambientSeconds * 2.2f + index * 1.7f)
+                val pulse = 0.5f + 0.5f * sin(ambientSeconds * 2.4f + index * 1.7f)
                 val rgb = color and 0x00FFFFFF
                 for (k in 3 downTo 1) {
-                    val grow = cell * 0.035f * k
-                    fill.color = ((72f / k * pulse).toInt() shl 24) or rgb
+                    val grow = cell * 0.05f * k
+                    fill.color = (((40f + 110f * pulse) / k).toInt() shl 24) or rgb
                     canvas.drawRoundRect(x - grow, y - grow, x + cell + grow, y + cell + grow, tileRadius + grow, tileRadius + grow, fill)
                 }
             }
@@ -620,8 +638,8 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
             // Fixed, different speed and path per light; positions wrap around the view.
             val fx = fraction(MOTE_SEED_X[k] + t * MOTE_SPEED_X[k])
             val fy = fraction(MOTE_SEED_Y[k] + t * MOTE_SPEED_Y[k])
-            val radius = density * (26f + 22f * MOTE_SEED_Y[k])
-            val alpha = (13f + 9f * sin(t * 0.7f + k)).toInt()
+            val radius = density * (30f + 30f * MOTE_SEED_Y[k])
+            val alpha = (p.moteAlpha * (0.65f + 0.35f * sin(t * 0.7f + k))).toInt()
             fill.color = (alpha shl 24) or p.mote
             canvas.drawCircle(fx * (w + 2f * radius) - radius, fy * (h + 2f * radius) - radius, radius, fill)
         }
@@ -661,11 +679,14 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         private const val PARTICLE_LIFE_MS = 420f
         private const val GLOW_EXPONENT = 7 // tiles of 128 and up glow at High quality
         private const val AMBIENT_FRAME_NANOS = 33_000_000L
-        private const val MOTES = 9
-        private val MOTE_SEED_X = floatArrayOf(0.05f, 0.31f, 0.62f, 0.88f, 0.17f, 0.46f, 0.73f, 0.94f, 0.55f)
-        private val MOTE_SEED_Y = floatArrayOf(0.12f, 0.71f, 0.33f, 0.90f, 0.48f, 0.05f, 0.82f, 0.27f, 0.60f)
-        private val MOTE_SPEED_X = floatArrayOf(0.011f, -0.008f, 0.006f, -0.012f, 0.009f, -0.005f, 0.007f, 0.010f, -0.009f)
-        private val MOTE_SPEED_Y = floatArrayOf(-0.006f, 0.009f, -0.011f, 0.005f, 0.008f, -0.010f, 0.006f, -0.007f, 0.012f)
+
+        /** A little under 1/60 s, so a real 60 Hz screen is never held back. */
+        private const val MIN_LIMITED_FRAME_NANOS = 15_500_000L
+        private const val MOTES = 12
+        private val MOTE_SEED_X = floatArrayOf(0.05f, 0.31f, 0.62f, 0.88f, 0.17f, 0.46f, 0.73f, 0.94f, 0.55f, 0.24f, 0.80f, 0.40f)
+        private val MOTE_SEED_Y = floatArrayOf(0.12f, 0.71f, 0.33f, 0.90f, 0.48f, 0.05f, 0.82f, 0.27f, 0.60f, 0.95f, 0.18f, 0.66f)
+        private val MOTE_SPEED_X = floatArrayOf(0.011f, -0.008f, 0.006f, -0.012f, 0.009f, -0.005f, 0.007f, 0.010f, -0.009f, 0.013f, -0.007f, 0.008f)
+        private val MOTE_SPEED_Y = floatArrayOf(-0.006f, 0.009f, -0.011f, 0.005f, 0.008f, -0.010f, 0.006f, -0.007f, 0.012f, -0.009f, 0.011f, -0.006f)
 
         private val DIRECTIONS = Direction.entries.toTypedArray()
 

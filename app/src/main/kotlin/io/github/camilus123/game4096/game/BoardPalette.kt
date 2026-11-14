@@ -13,6 +13,8 @@ class BoardPalette(
     val shadow: Int,
     /** RGB of the drifting background lights (High quality); the alpha is set when drawing. */
     val mote: Int,
+    /** Peak opacity of those lights, 0 to 255. A pale background needs more than a dark one. */
+    val moteAlpha: Float,
     /** Which tiles get the dark label. Defaults to "the bright ones". */
     usesDarkText: (exponent: Int, color: Int) -> Boolean = { _, color -> luminance(color) > 0.55f },
 ) {
@@ -55,7 +57,8 @@ class BoardPalette(
             darkText = c(0xFF6E5F52),
             lightText = c(0xFFFFFAF2),
             shadow = c(0x38604020),
-            mote = c(0x00F2A04A),
+            mote = c(0x00F28A2E),
+            moteAlpha = 58f,
             // Brown on the pale tiles and the yellows, white on the oranges, reds and beyond.
             usesDarkText = { exponent, _ -> exponent <= 2 || exponent in 7..11 },
         )
@@ -87,7 +90,8 @@ class BoardPalette(
             darkText = c(0xFF0C0E19),
             lightText = c(0xFFE6EAFF),
             shadow = c(0x66000000),
-            mote = c(0x007C6BFF),
+            mote = c(0x008A78FF),
+            moteAlpha = 64f,
         )
     }
 }

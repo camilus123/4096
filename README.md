@@ -103,14 +103,37 @@ How it is measured:
   and reports frames, median, 90th and 99th percentile and worst frame time, and the share
   of slow frames, ready to copy.
 
-Measured results:
+Measured results, from the in-app performance test (version 0.7.0, 6x6 grid, ten seconds
+per level, run by the owner on 2026-11-14). Times are the system's end-to-end figure for a
+frame, which includes waiting in the display pipeline, so they are not the cost of drawing.
+"Late" is the share of frames the system judged to have missed their deadline.
 
-| Device | Refresh | Level | Median | p99 | Slow frames |
-|---|---|---|---|---|---|
-| *none recorded yet* | | | | | |
+| Device | Screen | Level | Median | p99 | Worst | Late |
+|---|---|---|---|---|---|---|
+| Xiaomi 17T (2602DPT53G), Android 16 | 120 Hz | Low | 6.7 ms | 13.2 ms | 29.3 ms | 0.0% |
+| | | Medium | 6.5 ms | 12.9 ms | 28.0 ms | 0.0% |
+| | | High | 6.8 ms | 12.1 ms | 19.3 ms | 0.0% |
+| | 60 Hz (limiter on) | Low | 11.6 ms | 20.9 ms | 29.2 ms | 0.0% |
+| | | Medium | 11.9 ms | 21.3 ms | 27.6 ms | 0.0% |
+| | | High | 12.1 ms | 21.5 ms | 25.7 ms | 0.0% |
+| Samsung Galaxy S21 FE (SM-G990B), Android 16 | 120 Hz, first run | Low | 7.4 ms | 15.9 ms | 21.5 ms | 0.3% |
+| | | Medium | 15.6 ms | 24.1 ms | 53.0 ms | 0.8% |
+| | | High | 15.8 ms | 24.2 ms | 24.9 ms | 0.1% |
+| | 120 Hz, second run | Low | 7.3 ms | 10.8 ms | 19.2 ms | 0.1% |
+| | | Medium | 4.8 ms | 12.3 ms | 23.6 ms | 0.3% |
+| | | High | 5.6 ms | 9.3 ms | 15.9 ms | 0.1% |
 
-No results have been recorded yet. In particular nothing has been measured on a mid-range
-phone, so the target is not yet shown to be met there.
+What these do and do not show:
+
+- Both phones held their refresh rate with at most 0.8% of frames late, at every level.
+- Neither is the reference device. The Xiaomi 17T is a current high-end phone and the
+  S21 FE was an upper mid-range phone with a flagship processor when new. **Nothing has been
+  measured on a 3 to 4 GB mid-range phone, so the target is not yet shown to be met there.**
+- In version 0.7.0 the Xiaomi reported every frame twice, so its frame counts read 240 per
+  second on a 120 Hz screen; the timings above are not affected. Later versions ignore the
+  duplicate reports and count drawn frames directly.
+- The S21 FE did not switch to 60 Hz when the limiter asked, so its second run is also at
+  120 Hz. Later versions additionally make the board draw on every other refresh.
 
 ## Audio
 

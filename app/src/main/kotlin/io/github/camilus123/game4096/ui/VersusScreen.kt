@@ -106,6 +106,7 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                 },
                 update = { view ->
                     view.palette = palette
+                    view.limitTo60 = vm.settings.limitFps
                     view.bind(match.bot)
                     vm.onOpponentMoved = view::showLatestMove
                 },
@@ -170,6 +171,7 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     view.onMoved = vm::onMoved
                     view.moveGate = vm::canAcceptMove
                     view.quality = vm.quality
+                    view.limitTo60 = vm.settings.limitFps
                     view.inputEnabled = outcome == Outcome.UNDECIDED
                     view.contentDescription = boardDescription
                     view.bind(match.player)

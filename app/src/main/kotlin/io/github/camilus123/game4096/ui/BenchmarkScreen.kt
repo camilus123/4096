@@ -74,8 +74,8 @@ fun BenchmarkScreen(vm: GameViewModel, dark: Boolean, onBack: () -> Unit) {
         if (run == 0 || activity == null) return@LaunchedEffect
         val monitor = activity.frameMonitor
         val lines = StringBuilder()
-        lines.append(deviceLine(activity)).append('\n')
-        lines.append("level   frames  fps   med   p90   p99   worst  slow\n")
+        lines.append(deviceLine(activity, vm.settings.limitFps)).append('\n')
+        lines.append("level   fps   med   p90   p99   worst  slow   reports\n")
         val cells = IntArray(GRID * GRID)
         for (quality in Quality.entries) {
             phase = quality
@@ -85,6 +85,7 @@ fun BenchmarkScreen(vm: GameViewModel, dark: Boolean, onBack: () -> Unit) {
             val player = Bot(Difficulty.EASY, 7L)
             delay(700) // let the new board settle before measuring
             monitor.reset()
+            val drawsBefore = board?.drawCount ?: 0
             val started = System.nanoTime()
             val moves = PHASE_SECONDS * 1000 / MOVE_EVERY_MS
             for (i in 0 until moves) {
@@ -101,11 +102,16 @@ fun BenchmarkScreen(vm: GameViewModel, dark: Boolean, onBack: () -> Unit) {
             }
             val seconds = (System.nanoTime() - started) / 1e9
             val s = monitor.snapshot()
+            // "fps" is counted by the board itself, one per picture it drew. "reports" is how
+            // many frames the system reported per second, with any double reports after the plus.
+            val draws = (board?.drawCount ?: 0) - drawsBefore
             lines.append(
                 String.format(
-                    Locale.US, "%-7s %-7d %-5.0f %-5.1f %-5.1f %-5.1f %-6.1f %.1f%%\n",
-                    quality.name.lowercase(Locale.US), s.frames, s.frames / seconds,
-                    s.medianMs, s.p90Ms, s.p99Ms, s.worstMs, s.slowPercent,
+                    Locale.US, "%-7s %-5.0f %-5.1f %-5.1f %-5.1f %-6.1f %-6s %.0f+%.0f\n",
+                    quality.name.lowercase(Locale.US), draws / seconds,
+                    s.medianMs, s.p90Ms, s.p99Ms, s.worstMs,
+                    String.format(Locale.US, "%.1f%%", s.slowPercent),
+                    s.frames / seconds, monitor.duplicateCount() / seconds,
                 ),
             )
         }
@@ -164,6 +170,7 @@ fun BenchmarkScreen(vm: GameViewModel, dark: Boolean, onBack: () -> Unit) {
                 update = { view ->
                     view.palette = if (dark) BoardPalette.DARK else BoardPalette.LIGHT
                     view.quality = running ?: vm.quality
+                    view.limitTo60 = vm.settings.limitFps
                     view.ambientWhenPassive = true
                     view.bind(game)
                 },
@@ -218,11 +225,12 @@ fun BenchmarkScreen(vm: GameViewModel, dark: Boolean, onBack: () -> Unit) {
     }
 }
 
-private fun deviceLine(activity: MainActivity): String {
+private fun deviceLine(activity: MainActivity, limited: Boolean): String {
     val metrics = activity.resources.displayMetrics
     return String.format(
-        Locale.US, "4096 %s | %s %s | Android %s | %.0f Hz | %dx%d | %dx%d grid",
+        Locale.US, "4096 %s | %s %s | Android %s | %.0f Hz%s | %dx%d | %dx%d grid",
         BuildConfig.VERSION_NAME, Build.MANUFACTURER, Build.MODEL, Build.VERSION.RELEASE,
-        activity.currentRefreshRate(), metrics.widthPixels, metrics.heightPixels, GRID, GRID,
+        activity.currentRefreshRate(), if (limited) ", limit 60 on" else "",
+        metrics.widthPixels, metrics.heightPixels, GRID, GRID,
     )
 }

@@ -78,6 +78,22 @@ class FrameMonitorTest {
         assertEquals("old frames have left the percentile window", 2f, s.worstMs, 0.001f)
     }
 
+    @Test fun aFrameReportedTwiceIsCountedOnce() {
+        val m = monitor()
+        // What a Xiaomi on Android 16 did: every frame of a 120 Hz screen reported twice.
+        for (frame in 1L..120L) {
+            m.record(4 * ms, deadline, frameId = frame * deadline)
+            m.record(4 * ms, deadline, frameId = frame * deadline)
+        }
+        assertEquals(120, m.snapshot().frames)
+        assertEquals(120, m.duplicateCount())
+        m.reset()
+        assertEquals(0, m.duplicateCount())
+        // Without an id nothing can be told apart, so nothing is dropped.
+        repeat(10) { m.record(4 * ms, deadline) }
+        assertEquals(10, m.snapshot().frames)
+    }
+
     @Test fun devicesAreSortedIntoStartingLevels() {
         val gb = 1_000_000_000L
         assertEquals(Quality.LOW, DeviceClass.classify(lowRamDevice = true, totalMemoryBytes = 8 * gb, cores = 8))

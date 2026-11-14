@@ -86,7 +86,7 @@
     <string name="benchmark_start">Start</string>
     <string name="benchmark_again">Run again</string>
     <string name="benchmark_copy">Copy results</string>
-    <string name="benchmark_legend">Times are milliseconds per frame: median, 90th and 99th percentile, and the worst. "slow" is the share of frames that missed the screen\'s deadline.</string>
+    <string name="benchmark_legend">Times are milliseconds per frame: median, 90th and 99th percentile, and the worst. "fps" is counted by the board itself. "slow" is the share of frames the system judged late.</string>
     <string name="no_scores">No scores yet.</string>
     <string name="best">Best</string>
     <string name="best_tile">Tile</string>

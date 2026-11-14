@@ -59,8 +59,13 @@ class MainActivity : ComponentActivity() {
             if (better) best = mode
         }
         val attrs = window.attributes
-        if (attrs.preferredDisplayModeId != best.modeId) {
+        // Two ways of asking for the same thing; phones differ in which they listen to. Some
+        // listen to neither when the user has fixed the refresh rate in system settings, which
+        // is why the board also paces itself (see BoardView.limitTo60).
+        val rate = if (limitTo60) best.refreshRate else 0f
+        if (attrs.preferredDisplayModeId != best.modeId || attrs.preferredRefreshRate != rate) {
             attrs.preferredDisplayModeId = best.modeId
+            attrs.preferredRefreshRate = rate
             window.attributes = attrs
         }
         frameMonitor.periodNanos = (1_000_000_000.0 / best.refreshRate).toLong()

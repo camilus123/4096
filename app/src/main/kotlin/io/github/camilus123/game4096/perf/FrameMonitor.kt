@@ -59,6 +59,8 @@ class FrameMonitor(private val window: Window) : Window.OnFrameMetricsAvailableL
     private var slow = 0
     private var windowFrames = 0
     private var windowSlow = 0
+    private var lastFrameId = 0L
+    private var duplicates = 0
 
     fun start() {
         if (thread != null) return
@@ -91,15 +93,23 @@ class FrameMonitor(private val window: Window) : Window.OnFrameMetricsAvailableL
             slow = 0
             windowFrames = 0
             windowSlow = 0
+            duplicates = 0
         }
     }
+
+    /** Reports ignored since the last [reset] because they repeated a frame already counted. */
+    fun duplicateCount(): Int = synchronized(lock) { duplicates }
 
     /** Total frames seen since the last [reset]. Cheap; for working out frames per second. */
     fun frameCount(): Int = synchronized(lock) { frames }
 
     override fun onFrameMetricsAvailable(window: Window, metrics: FrameMetrics, dropped: Int) {
         if (metrics.getMetric(FrameMetrics.FIRST_DRAW_FRAME) == 1L) return
-        record(metrics.getMetric(FrameMetrics.TOTAL_DURATION), deadlineOf(metrics))
+        record(
+            metrics.getMetric(FrameMetrics.TOTAL_DURATION),
+            deadlineOf(metrics),
+            metrics.getMetric(FrameMetrics.INTENDED_VSYNC_TIMESTAMP),
+        )
     }
 
     private fun deadlineOf(metrics: FrameMetrics): Long {
@@ -110,10 +120,24 @@ class FrameMonitor(private val window: Window) : Window.OnFrameMetricsAvailableL
         return periodNanos
     }
 
-    /** Adds one frame. Visible for tests, which have no real window. */
-    internal fun record(totalNanos: Long, deadlineNanos: Long) {
+    /**
+     * Adds one frame. Visible for tests, which have no real window.
+     *
+     * [frameId] is the refresh the frame was meant for. Some phones report every frame twice
+     * (seen on a Xiaomi with Android 16, where a 120 Hz screen appeared to draw 240 frames a
+     * second); a second report for the same refresh is counted as a duplicate and ignored.
+     * Pass 0 if unknown.
+     */
+    internal fun record(totalNanos: Long, deadlineNanos: Long, frameId: Long = 0L) {
         var notify = false
         synchronized(lock) {
+            if (frameId != 0L) {
+                if (frameId == lastFrameId) {
+                    duplicates++
+                    return
+                }
+                lastFrameId = frameId
+            }
             durations[next] = totalNanos
             next = (next + 1) % CAPACITY
             if (stored < CAPACITY) stored++

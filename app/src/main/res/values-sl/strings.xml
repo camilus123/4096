@@ -84,7 +84,7 @@
     <string name="benchmark_start">Začni</string>
     <string name="benchmark_again">Ponovi</string>
     <string name="benchmark_copy">Kopiraj rezultate</string>
-    <string name="benchmark_legend">Časi so v milisekundah na sličico: mediana, 90. in 99. percentil ter najslabši. »slow« je delež sličic, ki so zamudile rok zaslona.</string>
+    <string name="benchmark_legend">Časi so v milisekundah na sličico: mediana, 90. in 99. percentil ter najslabši. »fps« šteje plošča sama. »slow« je delež sličic, ki jih je sistem ocenil kot prepozne.</string>
     <string name="no_scores">Ni še rezultatov.</string>
     <string name="best">Rekord</string>
     <string name="best_tile">Ploščica</string>

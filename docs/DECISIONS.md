@@ -147,3 +147,14 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   gives every level the same seeded game and the same moves.
 - **Glow and shadows are drawn as plain translucent shapes**, not blurs: no shaders, no
   off-screen layers, nothing allocated.
+
+## Changed after the first measurements (2026-11-14)
+
+- **Frame reports are de-duplicated.** A Xiaomi on Android 16 delivered two reports per
+  frame. Reports carrying the same intended-refresh timestamp as the previous one are now
+  dropped, and the performance test counts frames by how often the board actually drew.
+- **The 60 fps limit no longer depends on the phone agreeing.** A Samsung stayed at 120 Hz
+  when asked for a 60 Hz mode. The board now also skips every other refresh when the limit
+  is on and the screen is faster than about 64 Hz, which halves the drawing work with even
+  pacing. On a 90 Hz screen that gives 45 fps, the nearest even division.
+- **High's glow and drifting lights are stronger** (owner: they were hard to see).

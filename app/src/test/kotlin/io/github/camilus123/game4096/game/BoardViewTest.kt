@@ -302,4 +302,46 @@ class BoardViewTest {
         }
         assertTrue("sparks were drawn ($differing pixels differ)", differing > 20)
     }
+
+    @Test fun theSixtyLimitDrawsEveryOtherRefreshOnAFastScreenAndEveryRefreshOnASlowOne() {
+        fun framesHandled(periodMicros: Long, limit: Boolean): Int {
+            val game = gameOf(4, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            val view = newView()
+            view.limitTo60 = limit
+            view.bind(game)
+            settle()
+            view.swipe(Direction.LEFT)
+            // Feed refreshes for 200 ms (the animation lasts 253) and count the ones that asked for a redraw.
+            var handled = 0
+            var t = 0L
+            val base = SystemClock.uptimeNanos() + 1_000_000_000L // clearly after any frame the view has seen
+            while (t <= 200_000L) {
+                view.doFrame(base + t * 1000L)
+                if (view.isDirty) handled++
+                // Robolectric never draws by itself; drawing clears the dirty flag as a real frame would.
+                render(view, "limit-scratch")
+                t += periodMicros
+            }
+            assertTrue(view.isAnimating)
+            return handled
+        }
+        val full120 = framesHandled(8_333, limit = false)
+        val limited120 = framesHandled(8_333, limit = true)
+        val limited60 = framesHandled(16_667, limit = true)
+        val full60 = framesHandled(16_667, limit = false)
+        assertEquals(25, full120)
+        assertTrue("half the frames on a 120 Hz screen, drew $limited120 of $full120", limited120 in 12..13)
+        assertEquals("a 60 Hz screen is not held back", full60, limited60)
+        assertEquals(13, full60)
+    }
+
+    @Test fun theBoardCountsItsOwnDraws() {
+        val view = newView()
+        view.bind(gameOf(4, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        settle()
+        val before = view.drawCount
+        render(view, "count-scratch")
+        render(view, "count-scratch")
+        assertEquals(before + 2, view.drawCount)
+    }
 }
