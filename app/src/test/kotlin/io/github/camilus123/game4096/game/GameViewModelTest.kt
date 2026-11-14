@@ -10,6 +10,7 @@ import io.github.camilus123.game4096.audio.MusicTrack
 import io.github.camilus123.game4096.audio.Sfx
 import io.github.camilus123.game4096.core.Difficulty
 import io.github.camilus123.game4096.data.HapticLevel
+import io.github.camilus123.game4096.data.QualityChoice
 import io.github.camilus123.game4096.data.ThemeChoice
 import io.github.camilus123.game4096.core.EndReason
 import io.github.camilus123.game4096.core.Outcome
@@ -75,7 +76,7 @@ class GameViewModelTest {
 
     private fun launch(): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage, { now }, Runnable::run, audio, vibrations)
+        val vm = GameViewModel(app, storage, { now }, Runnable::run, audio, vibrations, Quality.HIGH)
         vm.setForeground(true)
         return vm to storage
     }
@@ -404,7 +405,7 @@ class GameViewModelTest {
     /** As [launch], but on Robolectric's clock, so the opponent's pauses pass when the looper is idled. */
     private fun launchVersus(config: VersusConfig, size: Int = 4): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run, audio, vibrations)
+        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run, audio, vibrations, Quality.HIGH)
         vm.setForeground(true)
         vm.selectGrid(size)
         vm.selectMode(Mode.VERSUS)
@@ -492,7 +493,7 @@ class GameViewModelTest {
         storage.flush()
 
         val storage2 = Storage(app)
-        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run, audio, vibrations)
+        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run, audio, vibrations, Quality.HIGH)
         assertEquals("a finished match is not reopened", Screen.MENU, again.screen)
         assertEquals(Mode.VERSUS, again.mode)
         assertEquals(easyRace, again.versusConfig)
@@ -531,7 +532,7 @@ class GameViewModelTest {
         assertTrue(botMoves > 0)
         storage.flush()
 
-        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run, audio, vibrations)
+        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run, audio, vibrations, Quality.HIGH)
         assertEquals(Screen.GAME, again.screen)
         val match = again.match!!
         assertEquals(config, match.config)
@@ -660,7 +661,7 @@ class GameViewModelTest {
         storage.flush()
 
         val second = RecordingAudio()
-        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second, vibrations)
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second, vibrations, Quality.HIGH)
         assertEquals(SessionStatus.STUCK, again.status)
         assertTrue("reopening a stuck game is silent", second.effects.none { it == Sfx.OVER })
         again.undo()
@@ -680,7 +681,7 @@ class GameViewModelTest {
         assertTrue(audio.muted)
 
         val second = RecordingAudio()
-        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second, vibrations)
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second, vibrations, Quality.HIGH)
         assertEquals(0.25f, again.settings.effectsVolume)
         assertEquals(0f, again.settings.musicVolume)
         assertTrue(again.settings.muted)
@@ -728,7 +729,7 @@ class GameViewModelTest {
         assertEquals(HapticLevel.HIGH, felt.last().second)
         vm.setHaptics(HapticLevel.OFF)
         assertEquals(HapticLevel.OFF, vm.settings.haptics)
-        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, RecordingAudio(), vibrations)
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, RecordingAudio(), vibrations, Quality.HIGH)
         assertEquals(HapticLevel.OFF, again.settings.haptics)
     }
 
@@ -736,5 +737,63 @@ class GameViewModelTest {
         app.getSharedPreferences("settings", 0).edit().putBoolean("haptics", false).commit()
         val (vm, _) = launch()
         assertEquals(HapticLevel.OFF, vm.settings.haptics)
+    }
+
+    // ---- Quality -----------------------------------------------------------------------
+
+    @Test fun autoStartsAtThePhonesLevelAndStepsDownOnlyDuringPlay() {
+        val (vm, storage) = launch()
+        assertEquals(QualityChoice.AUTO, vm.settings.quality)
+        assertEquals(Quality.HIGH, vm.quality)
+
+        vm.onSlowFrames()
+        assertEquals("slow frames in the menu say nothing about the game", Quality.HIGH, vm.quality)
+        assertFalse(vm.watchesFrames)
+
+        vm.play()
+        assertTrue(vm.watchesFrames)
+        vm.onSlowFrames()
+        assertEquals(Quality.MEDIUM, vm.quality)
+        vm.onSlowFrames()
+        assertEquals(Quality.LOW, vm.quality)
+        vm.onSlowFrames()
+        assertEquals("there is nothing below Low", Quality.LOW, vm.quality)
+
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, RecordingAudio(), vibrations, Quality.HIGH)
+        assertEquals("the lowered level is remembered", Quality.LOW, again.quality)
+        assertEquals(Quality.LOW, storage.autoQuality)
+    }
+
+    @Test fun aFixedLevelIsNeverChangedBySlowFrames() {
+        val (vm, _) = launch()
+        vm.updateSettings(vm.settings.copy(quality = QualityChoice.HIGH))
+        vm.play()
+        assertFalse(vm.watchesFrames)
+        vm.onSlowFrames()
+        assertEquals(Quality.HIGH, vm.quality)
+        vm.updateSettings(vm.settings.copy(quality = QualityChoice.LOW))
+        assertEquals(Quality.LOW, vm.quality)
+    }
+
+    @Test fun choosingAutoAgainGivesThePhoneAFreshStart() {
+        val (vm, storage) = launch()
+        vm.play()
+        vm.onSlowFrames()
+        vm.onSlowFrames()
+        assertEquals(Quality.LOW, vm.quality)
+        vm.updateSettings(vm.settings.copy(quality = QualityChoice.MEDIUM))
+        assertEquals(Quality.MEDIUM, vm.quality)
+        vm.updateSettings(vm.settings.copy(quality = QualityChoice.AUTO))
+        assertEquals(Quality.HIGH, vm.quality)
+        assertNull(storage.autoQuality)
+    }
+
+    @Test fun graphicsSettingsAreRemembered() {
+        val (vm, _) = launch()
+        vm.updateSettings(vm.settings.copy(quality = QualityChoice.MEDIUM, limitFps = true, showFrameStats = true))
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, RecordingAudio(), vibrations, Quality.HIGH)
+        assertEquals(QualityChoice.MEDIUM, again.settings.quality)
+        assertTrue(again.settings.limitFps)
+        assertTrue(again.settings.showFrameStats)
     }
 }

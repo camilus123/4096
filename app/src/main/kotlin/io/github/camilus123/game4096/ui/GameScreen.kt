@@ -123,6 +123,7 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     view.palette = if (dark) BoardPalette.DARK else BoardPalette.LIGHT
                     view.onMoved = vm::onMoved
                     view.moveGate = vm::canAcceptMove
+                    view.quality = vm.quality
                     view.inputEnabled = status == SessionStatus.PLAYING
                     view.contentDescription = boardDescription
                     view.bind(game)
@@ -142,6 +143,7 @@ fun GameScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                 )
             }
         }
+        if (vm.settings.showFrameStats) FrameStatsLine(vm.quality)
     }
 }
 

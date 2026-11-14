@@ -31,12 +31,14 @@ import io.github.camilus123.game4096.core.VersusMatch
 import io.github.camilus123.game4096.core.VersusRecord
 import io.github.camilus123.game4096.data.GameKey
 import io.github.camilus123.game4096.data.HapticLevel
+import io.github.camilus123.game4096.data.QualityChoice
+import io.github.camilus123.game4096.perf.DeviceClass
 import io.github.camilus123.game4096.data.Settings
 import io.github.camilus123.game4096.data.Storage
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-enum class Screen { MENU, GAME, SCORES, SETTINGS }
+enum class Screen { MENU, GAME, SCORES, SETTINGS, BENCHMARK }
 
 /**
  * Holds what is being played (a single-player [Session] or a [VersusMatch]), mirrors it into
@@ -57,6 +59,8 @@ class GameViewModel(
     private val botExecutor: Executor,
     private val audio: GameAudio,
     private val vibrate: (exponent: Int, level: HapticLevel) -> Unit,
+    /** The quality level Auto starts from on this phone. */
+    private val deviceQuality: Quality,
 ) : AndroidViewModel(application) {
 
     @Suppress("unused") // used by the default ViewModel factory
@@ -67,6 +71,7 @@ class GameViewModel(
         Executors.newSingleThreadExecutor { r -> Thread(r, "opponent").apply { priority = Thread.NORM_PRIORITY - 1 } },
         AudioEngine.get(application),
         Haptics(application)::merge,
+        DeviceClass.detect(application),
     )
 
     var screen by mutableStateOf(Screen.MENU)
@@ -74,6 +79,29 @@ class GameViewModel(
 
     var settings by mutableStateOf(storage.loadSettings())
         private set
+
+    /** What Auto currently means: the phone's class, lowered if frames were slow. */
+    var autoQuality by mutableStateOf(storage.autoQuality ?: deviceQuality)
+        private set
+
+    /** The quality level actually in use. */
+    val quality: Quality
+        get() = when (settings.quality) {
+            QualityChoice.AUTO -> autoQuality
+            QualityChoice.LOW -> Quality.LOW
+            QualityChoice.MEDIUM -> Quality.MEDIUM
+            QualityChoice.HIGH -> Quality.HIGH
+        }
+
+    /** True while slow frames should lower the quality: only in Auto, and only during play. */
+    val watchesFrames: Boolean get() = settings.quality == QualityChoice.AUTO && screen == Screen.GAME
+
+    /** Called when a good share of recent frames missed their deadline. Auto steps down one level. */
+    fun onSlowFrames() {
+        if (!watchesFrames || autoQuality == Quality.LOW) return
+        autoQuality = autoQuality.lower()
+        storage.autoQuality = autoQuality
+    }
 
     // ---- Menu choices --------------------------------------------------------------------
 
@@ -218,6 +246,11 @@ class GameViewModel(
 
     /** Applies and saves new settings. [tap] is false for sliders, which change many times per drag. */
     fun updateSettings(new: Settings, tap: Boolean = true) {
+        if (new.quality == QualityChoice.AUTO && settings.quality != QualityChoice.AUTO) {
+            // Choosing Auto again gives the phone a fresh chance at its own level.
+            autoQuality = deviceQuality
+            storage.autoQuality = null
+        }
         settings = new
         storage.saveSettings(new)
         audio.setVolumes(new.effectsVolume, new.musicVolume, new.muted)
@@ -236,6 +269,11 @@ class GameViewModel(
     fun showSettings() {
         audio.play(Sfx.TAP)
         screen = Screen.SETTINGS
+    }
+
+    fun showBenchmark() {
+        audio.play(Sfx.TAP)
+        screen = Screen.BENCHMARK
     }
 
     private fun updateMusic() {

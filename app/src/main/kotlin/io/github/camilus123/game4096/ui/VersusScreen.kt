@@ -40,6 +40,7 @@ import io.github.camilus123.game4096.core.VersusRule
 import io.github.camilus123.game4096.game.BoardPalette
 import io.github.camilus123.game4096.game.BoardView
 import io.github.camilus123.game4096.game.GameViewModel
+import io.github.camilus123.game4096.game.Quality
 
 /**
  * Versus AI: the opponent's live board sits small at the top with its score, the player's
@@ -100,6 +101,7 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     BoardView(context).apply {
                         interactive = false
                         inputEnabled = false
+                        quality = Quality.LOW // it is small; decoration would be wasted work
                     }
                 },
                 update = { view ->
@@ -167,6 +169,7 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                     view.palette = palette
                     view.onMoved = vm::onMoved
                     view.moveGate = vm::canAcceptMove
+                    view.quality = vm.quality
                     view.inputEnabled = outcome == Outcome.UNDECIDED
                     view.contentDescription = boardDescription
                     view.bind(match.player)
@@ -176,6 +179,7 @@ fun VersusScreen(vm: GameViewModel, dark: Boolean, onMenu: () -> Unit) {
                 VersusResult(match, outcome, vm, onMenu)
             }
         }
+        if (vm.settings.showFrameStats) FrameStatsLine(vm.quality)
     }
 }
 

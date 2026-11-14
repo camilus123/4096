@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.LocalActivity
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.DisposableEffect
+import io.github.camilus123.game4096.MainActivity
 import io.github.camilus123.game4096.data.ThemeChoice
 import androidx.compose.foundation.background
 import androidx.compose.foundation.isSystemInDarkTheme
@@ -46,6 +47,22 @@ fun App(vm: GameViewModel = viewModel()) {
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { vm.setForeground(true) }
     LifecycleEventEffect(Lifecycle.Event.ON_PAUSE) { vm.setForeground(false) }
 
+    // Frame rate limit, and Auto quality reacting to slow frames. Both live in the activity's window.
+    val gameActivity = activity as? MainActivity
+    val limitFps = vm.settings.limitFps
+    val watchesFrames = vm.watchesFrames
+    DisposableEffect(gameActivity, limitFps) {
+        gameActivity?.applyRefreshRate(limitFps)
+        onDispose {}
+    }
+    DisposableEffect(gameActivity, watchesFrames) {
+        gameActivity?.frameMonitor?.let {
+            it.onSustainedSlowFrames = vm::onSlowFrames
+            it.watching = watchesFrames
+        }
+        onDispose { gameActivity?.frameMonitor?.watching = false }
+    }
+
     GameTheme(dark) {
         Box(
             Modifier
@@ -65,6 +82,10 @@ fun App(vm: GameViewModel = viewModel()) {
                 Screen.SCORES -> {
                     BackHandler { vm.showMenu() }
                     ScoresScreen(vm = vm, onBack = vm::showMenu)
+                }
+                Screen.BENCHMARK -> {
+                    BackHandler { vm.showSettings() }
+                    BenchmarkScreen(vm = vm, dark = dark, onBack = vm::showSettings)
                 }
                 Screen.SETTINGS -> {
                     BackHandler { vm.showMenu() }

@@ -20,6 +20,8 @@ import io.github.camilus123.game4096.core.ScoreEntry
 import io.github.camilus123.game4096.data.GameKey
 import io.github.camilus123.game4096.data.Storage
 import org.junit.Assert.assertTrue
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
@@ -61,6 +63,19 @@ class ScreenRenderTest {
         assertTrue("screen $name is blank", differs)
     }
 
+    private fun launchActivity(): MainActivity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+
+    /** See BoardViewTest: ambient motion and Robolectric's run-until-idle cannot be combined. */
+    @Before fun stillAmbient() {
+        BoardView.ambientMotionAllowed = false
+    }
+
+    // The activities are deliberately not destroyed here: after one is torn down, Compose in
+    // the next test's activity stops recomposing under Robolectric.
+    @After fun allowAmbientAgain() {
+        BoardView.ambientMotionAllowed = true
+    }
+
     /** The board the player swipes on: the interactive BoardView in the activity. */
     private fun playerBoard(activity: MainActivity): BoardView {
         fun find(v: View): BoardView? {
@@ -68,7 +83,13 @@ class ScreenRenderTest {
             if (v is ViewGroup) for (c in 0 until v.childCount) find(v.getChildAt(c))?.let { return it }
             return null
         }
-        return find(activity.window.decorView) ?: error("no board on screen")
+        // Compose may be between two layouts; give it a moment before giving up.
+        repeat(20) {
+            find(activity.window.decorView)?.let { return it }
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(100))
+        }
+        val vm = androidx.lifecycle.ViewModelProvider(activity)[io.github.camilus123.game4096.game.GameViewModel::class.java]
+        error("no board on screen: screen=${vm.screen} match=${vm.match != null} session=${vm.session != null} outcome=${vm.outcome}")
     }
 
     private fun storage() = Storage.get(ApplicationProvider.getApplicationContext())
@@ -101,7 +122,7 @@ class ScreenRenderTest {
     fun slovenianOnANarrowPhone() {
         seed()
         storage().addVersusResult(4, Difficulty.HARD, Outcome.BOT_WON)
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val activity = launchActivity()
         val vm = androidx.lifecycle.ViewModelProvider(activity)[io.github.camilus123.game4096.game.GameViewModel::class.java]
         vm.selectMode(Mode.VERSUS)
         vm.selectVersus(VersusConfig(VersusRule.LAST_STANDING, 0, Difficulty.HARD))
@@ -127,7 +148,7 @@ class ScreenRenderTest {
 
     private fun renderAll(prefix: String) {
         seed()
-        val activity = Robolectric.buildActivity(MainActivity::class.java).setup().get()
+        val activity = launchActivity()
         capture(activity, "$prefix-menu")
         val vm = androidx.lifecycle.ViewModelProvider(activity)[io.github.camilus123.game4096.game.GameViewModel::class.java]
         vm.showScores()
@@ -208,5 +229,19 @@ class ScreenRenderTest {
         capture(activity, "$prefix-menu-final")
         vm.showSettings()
         capture(activity, "$prefix-settings")
+        vm.updateSettings(vm.settings.copy(showFrameStats = true, quality = io.github.camilus123.game4096.data.QualityChoice.HIGH))
+        vm.showBenchmark()
+        capture(activity, "$prefix-benchmark")
+        vm.showMenu()
+        vm.selectMode(Mode.CLASSIC)
+        vm.selectGrid(4)
+        vm.play()
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(1))
+        repeat(30) { k ->
+            playerBoard(activity).onKeyDown(keys[k % 4], KeyEvent(KeyEvent.ACTION_DOWN, keys[k % 4]))
+            shadowOf(Looper.getMainLooper()).idleFor(Duration.ofMillis(400))
+        }
+        shadowOf(Looper.getMainLooper()).idleFor(Duration.ofSeconds(2))
+        capture(activity, "$prefix-game-high-stats")
     }
 }

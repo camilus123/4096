@@ -126,3 +126,24 @@ Choices confirmed by the owner, and choices made where the build brief was silen
 - **Small merges are soft, short knocks and play quieter than big ones.** The first version
   used the same bright note for every merge, which got tiresome. Volume now rises with the
   tile, so the frequent small merges sit in the background.
+
+## Quality and performance (milestone 7)
+
+- **What each level adds** is listed in the README. The opponent's small board in Versus is
+  always drawn at Low; decoration at that size would be wasted work.
+- **High draws at rest; Low and Medium never do.** The brief asks both for animated
+  backgrounds at higher levels and for a resting board to cost almost nothing. High's
+  ambient motion runs at about 30 fps and stops when the app is not visible; the other
+  levels stay completely still.
+- **Auto's starting level uses memory and core count**, the two things available without
+  running a benchmark at start-up. It is deliberately only a starting point.
+- **Auto steps down, never up, and remembers it.** A level that stuttered once will likely
+  stutter again; choosing Auto again in settings resets it.
+- **Slow frames only count during play.** Menus and screen changes are not what the level
+  controls.
+- **A frame is "slow" when it misses its deadline** as the system reports it (Android 12+)
+  or one refresh period (older versions).
+- **The performance test uses the 6x6 grid** because it has the most tiles to draw, and
+  gives every level the same seeded game and the same moves.
+- **Glow and shadows are drawn as plain translucent shapes**, not blurs: no shaders, no
+  off-screen layers, nothing allocated.

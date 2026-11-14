@@ -7,6 +7,7 @@ import io.github.camilus123.game4096.core.Difficulty
 import io.github.camilus123.game4096.core.GameRules
 import io.github.camilus123.game4096.core.VersusConfig
 import io.github.camilus123.game4096.core.VersusRule
+import io.github.camilus123.game4096.game.Quality
 import io.github.camilus123.game4096.core.Mode
 
 fun modeNameRes(mode: Mode): Int = when (mode) {
@@ -80,4 +81,10 @@ fun versusLabel(config: VersusConfig): String {
         VersusRule.TIMER -> "$name · " + stringResource(R.string.minutes, config.variant / 60)
         VersusRule.LAST_STANDING -> name
     }
+}
+
+fun qualityNameRes(quality: Quality): Int = when (quality) {
+    Quality.LOW -> R.string.quality_low
+    Quality.MEDIUM -> R.string.quality_medium
+    Quality.HIGH -> R.string.quality_high
 }

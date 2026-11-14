@@ -8,15 +8,19 @@ import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
+import io.github.camilus123.game4096.core.Direction
 import io.github.camilus123.game4096.core.Game
 import io.github.camilus123.game4096.core.GameState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
+import org.junit.After
+import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.Robolectric
+import org.robolectric.android.controller.ActivityController
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.Shadows.shadowOf
 import org.robolectric.annotation.Config
@@ -37,8 +41,27 @@ class BoardViewTest {
 
     private val side = 1080
 
+    private val controllers = ArrayList<ActivityController<Activity>>()
+
+    /**
+     * High quality's ambient motion never stops, and Robolectric runs the main thread until
+     * nothing is left to do, so the two cannot be combined. These tests run with the motion
+     * switched off (the glow and lights are drawn still) and check the switch separately.
+     */
+    @Before fun stillAmbient() {
+        BoardView.ambientMotionAllowed = false
+    }
+
+    @After fun destroyActivities() {
+        for (c in controllers) c.pause().stop().destroy()
+        controllers.clear()
+        BoardView.ambientMotionAllowed = true
+    }
+
     private fun newView(): BoardView {
-        val activity = Robolectric.buildActivity(Activity::class.java).setup().get()
+        val controller = Robolectric.buildActivity(Activity::class.java).setup()
+        controllers.add(controller)
+        val activity = controller.get()
         val view = BoardView(activity)
         activity.setContentView(view)
         return view
@@ -174,5 +197,109 @@ class BoardViewTest {
         val looper = shadowOf(Looper.getMainLooper())
         assertTrue("nothing is scheduled once the animation has finished", looper.isIdle)
         assertFalse(view.isAnimating)
+    }
+
+    // ---- Quality levels ----------------------------------------------------------------
+
+    private val sample = intArrayOf(1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 0, 0, 3, 3)
+
+    @Test fun everyQualityLevelDrawsTheSameTilesInTheSamePlaces() {
+        for (dark in listOf(false, true)) {
+            val palette = if (dark) BoardPalette.DARK else BoardPalette.LIGHT
+            for (quality in Quality.entries) {
+                val view = newView()
+                view.palette = palette
+                view.quality = quality
+                view.bind(gameOf(4, *sample))
+                settle()
+                val bitmap = render(view, "quality-${quality.name.lowercase()}-${if (dark) "dark" else "light"}")
+                for (i in sample.indices) {
+                    if (sample[i] != 0) assertEquals("cell $i at $quality", palette.tile(sample[i]), cellColor(bitmap, 4, i / 4, i % 4))
+                }
+            }
+        }
+    }
+
+    /**
+     * Robolectric plays a whole animation inside one turn of the main thread, so its middle
+     * cannot be seen from outside. These tests hand the view its frame timestamps directly.
+     */
+    private fun frameAt(view: BoardView, millis: Long) = view.doFrame(1_000_000_000L + millis * 1_000_000L)
+
+    @Test fun animationsTakeTheSameTimeAtEveryQualityLevel() {
+        for (quality in Quality.entries) {
+            val game = gameOf(4, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+            val view = newView()
+            view.quality = quality
+            view.bind(game)
+            settle()
+            view.swipe(Direction.LEFT)
+            assertEquals("the move itself is instant", 3, game.exponentAt(0))
+            frameAt(view, 0)
+            frameAt(view, 100)
+            assertTrue("sliding at 100 ms on $quality", view.isAnimating)
+            frameAt(view, 250)
+            assertTrue("popping at 250 ms on $quality", view.isAnimating)
+            frameAt(view, 254)
+            assertFalse("settled at 254 ms (110 slide + 143 pop) on $quality", view.isAnimating)
+        }
+    }
+
+    @Test fun lowAndMediumDrawNothingAtRestButHighKeepsItsAmbientMotion() {
+        for (quality in Quality.entries) {
+            val view = newView()
+            view.quality = quality
+            view.bind(gameOf(4, 0, 0, 2, 2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+            settle()
+            view.swipe(Direction.LEFT) // a merge: rings at Medium, sparks at High
+            settle()
+            settle()
+            assertFalse(view.isAnimating)
+            assertFalse("with ambient motion off, nothing moves at rest on $quality", view.wantsFrames)
+            // With the motion allowed, as in the app, only High keeps going.
+            BoardView.ambientMotionAllowed = true
+            assertEquals("at rest on $quality", quality == Quality.HIGH, view.wantsFrames)
+            BoardView.ambientMotionAllowed = false
+        }
+    }
+
+    @Test fun theOpponentsBoardNeverRunsAmbientMotion() {
+        val view = newView()
+        view.interactive = false
+        view.quality = Quality.HIGH
+        view.bind(gameOf(4, 7, 8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0))
+        settle()
+        BoardView.ambientMotionAllowed = true
+        assertFalse(view.wantsFrames)
+        BoardView.ambientMotionAllowed = false
+    }
+
+    @Test fun mergeSparksAppearAtHighAndBurnOut() {
+        val game = gameOf(4, 0, 0, 5, 5, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0)
+        val view = newView()
+        view.quality = Quality.HIGH
+        view.bind(game)
+        settle()
+        view.swipe(Direction.LEFT)
+        frameAt(view, 0)
+        frameAt(view, 60)
+        assertFalse("no sparks while the tiles are still sliding", view.wantsFrames && !view.isAnimating)
+        frameAt(view, 115) // the slide has just ended: the burst
+        for (t in 130..330 step 16) frameAt(view, t.toLong())
+        assertFalse(view.isAnimating)
+        assertTrue("sparks are still flying after the tiles settle", view.wantsFrames)
+        val during = render(view, "quality-high-sparks")
+        settle()
+        settle()
+        assertFalse("the sparks burn out and the board comes to rest", view.wantsFrames)
+        val after = render(view, "quality-high-after-sparks")
+        // The two pictures show the same settled board; whatever differs between them is sparks.
+        var differing = 0
+        for (y in 0 until side step 2) {
+            for (x in 0 until side step 2) {
+                if (during.getPixel(x, y) != after.getPixel(x, y)) differing++
+            }
+        }
+        assertTrue("sparks were drawn ($differing pixels differ)", differing > 20)
     }
 }

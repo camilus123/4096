@@ -3,9 +3,9 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: milestone 6 of 8.** All five modes are playable on all three grids, with sound
-effects, three music tracks and a settings screen (volumes, mute, vibration, theme,
-language). Quality levels and measured performance tuning come next.
+**Status: milestone 7 of 8.** All five modes, audio, settings, three quality levels plus
+Auto, a 60 fps limiter and an in-app performance test. What remains is the signed release
+build and final polish.
 
 | Milestone | State |
 |---|---|
@@ -15,8 +15,8 @@ language). Quality levels and measured performance tuning come next.
 | 4. Zen, Time attack, Limited moves | done |
 | 5. Versus AI | done |
 | 6. Audio | done |
-| 7. Quality levels and performance tuning | next |
-| 8. Polish and release build | |
+| 7. Quality levels and performance tuning | done |
+| 8. Polish and release build | next |
 
 ## Building
 
@@ -71,6 +71,46 @@ the release build in milestone 8.
   survive, and draw whole screens to `app/build/screen-renders/` for a human to look at.
 
 Decisions that the build brief left open are recorded in [docs/DECISIONS.md](docs/DECISIONS.md).
+
+## Performance
+
+The target is a locked 60 fps on 60 Hz screens and 120 fps on 120 Hz screens on a mid-range
+phone several years old.
+
+How the game is built for that:
+
+- The board allocates nothing per frame and draws only while something moves. At Low and
+  Medium quality a resting board requests no frames at all.
+- Moves, saving, the opponent's search, audio decoding and audio output all happen off the
+  main thread or outside the frame path.
+- The window asks for the display's highest refresh rate; a setting limits it to 60 Hz to
+  save battery.
+- **Quality levels** change decoration only; gameplay and animation timing are identical.
+  Low is flat tiles. Medium adds tile shadows, a ring on merges and a springier pop. High
+  adds merge particles, a pulsing glow on tiles of 128 and up, and slow lights drifting
+  behind the board (the only level that draws at rest, at about 30 fps).
+- **Auto** starts from the phone's memory and core count (Low under about 3 GB or with four
+  cores or fewer, Medium up to about 6 GB, High above) and steps down one level whenever
+  more than 12% of the last 240 frames of play missed their deadline.
+
+How it is measured:
+
+- `FrameMonitor` reads the platform's per-frame report (`Window.OnFrameMetricsAvailable`,
+  the source behind `dumpsys gfxinfo` and JankStats): the full time of each frame including
+  the GPU side, compared with the frame's deadline.
+- Settings has **Show frame timing while playing**, a one-line live readout, and a
+  **Performance test** that plays the same 6x6 game for ten seconds at each quality level
+  and reports frames, median, 90th and 99th percentile and worst frame time, and the share
+  of slow frames, ready to copy.
+
+Measured results:
+
+| Device | Refresh | Level | Median | p99 | Slow frames |
+|---|---|---|---|---|---|
+| *none recorded yet* | | | | | |
+
+No results have been recorded yet. In particular nothing has been measured on a mid-range
+phone, so the target is not yet shown to be met there.
 
 ## Audio
 

@@ -33,7 +33,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import io.github.camilus123.game4096.R
 import io.github.camilus123.game4096.data.HapticLevel
+import io.github.camilus123.game4096.MainActivity
 import io.github.camilus123.game4096.data.Languages
+import io.github.camilus123.game4096.data.QualityChoice
 import io.github.camilus123.game4096.data.ThemeChoice
 import io.github.camilus123.game4096.game.GameViewModel
 import kotlin.math.roundToInt
@@ -92,6 +94,37 @@ fun SettingsScreen(vm: GameViewModel, onBack: () -> Unit) {
                 Option(stringResource(R.string.settings_high), settings.haptics == HapticLevel.HIGH) {
                     vm.setHaptics(HapticLevel.HIGH)
                 }
+            }
+
+            Heading(stringResource(R.string.settings_graphics))
+            Row(Modifier.height(IntrinsicSize.Min), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                // Auto shows the level it has settled on for this phone.
+                val autoLabel = stringResource(R.string.quality_auto) + "\n(" + stringResource(qualityNameRes(vm.autoQuality)) + ")"
+                Option(autoLabel, settings.quality == QualityChoice.AUTO) {
+                    vm.updateSettings(settings.copy(quality = QualityChoice.AUTO))
+                }
+                Option(stringResource(R.string.quality_low), settings.quality == QualityChoice.LOW) {
+                    vm.updateSettings(settings.copy(quality = QualityChoice.LOW))
+                }
+                Option(stringResource(R.string.quality_medium), settings.quality == QualityChoice.MEDIUM) {
+                    vm.updateSettings(settings.copy(quality = QualityChoice.MEDIUM))
+                }
+                Option(stringResource(R.string.quality_high), settings.quality == QualityChoice.HIGH) {
+                    vm.updateSettings(settings.copy(quality = QualityChoice.HIGH))
+                }
+            }
+            Spacer(Modifier.height(6.dp))
+            if ((activity as? MainActivity)?.supportsHighRefreshRate() != false) {
+                SwitchRow(stringResource(R.string.settings_limit_fps), settings.limitFps) {
+                    vm.updateSettings(settings.copy(limitFps = it))
+                }
+            }
+            SwitchRow(stringResource(R.string.settings_frame_stats), settings.showFrameStats) {
+                vm.updateSettings(settings.copy(showFrameStats = it))
+            }
+            Spacer(Modifier.height(6.dp))
+            QuietButton(onClick = vm::showBenchmark, modifier = Modifier.fillMaxWidth()) {
+                Text(stringResource(R.string.benchmark_title))
             }
 
             Heading(stringResource(R.string.settings_theme))

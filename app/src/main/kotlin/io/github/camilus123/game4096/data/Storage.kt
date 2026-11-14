@@ -6,6 +6,7 @@ import io.github.camilus123.game4096.core.Outcome
 import io.github.camilus123.game4096.core.SaveCodec
 import io.github.camilus123.game4096.core.VersusMatch
 import io.github.camilus123.game4096.core.VersusRecord
+import io.github.camilus123.game4096.game.Quality
 import io.github.camilus123.game4096.core.SavedGame
 import io.github.camilus123.game4096.core.ScoreEntry
 import io.github.camilus123.game4096.core.ScoreTable
@@ -172,6 +173,9 @@ class Storage(context: Context) {
             haptics = HapticLevel.parse(settingsPrefs.getString("haptic_level", null))
                 ?: if (settingsPrefs.getBoolean("haptics", true)) d.haptics else HapticLevel.OFF,
             theme = ThemeChoice.parse(settingsPrefs.getString("theme", null)),
+            quality = QualityChoice.parse(settingsPrefs.getString("quality", null)),
+            limitFps = settingsPrefs.getBoolean("limit_fps", d.limitFps),
+            showFrameStats = settingsPrefs.getBoolean("frame_stats", d.showFrameStats),
         )
     }
 
@@ -182,8 +186,18 @@ class Storage(context: Context) {
             .putBoolean("muted", s.muted)
             .putString("haptic_level", s.haptics.id)
             .putString("theme", s.theme.id)
+            .putString("quality", s.quality.id)
+            .putBoolean("limit_fps", s.limitFps)
+            .putBoolean("frame_stats", s.showFrameStats)
             .apply()
     }
+
+    /** The level Auto has settled on after stepping down for slow frames, or null if it never had to. */
+    var autoQuality: Quality?
+        get() = settingsPrefs.getString("auto_quality", null)?.let { name -> Quality.entries.firstOrNull { it.name == name } }
+        set(value) {
+            settingsPrefs.edit().putString("auto_quality", value?.name).apply()
+        }
 
     /** Blocks until every queued write is on disk. For tests and for leaving the app. */
     fun flush() {
