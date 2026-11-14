@@ -5,7 +5,11 @@ import androidx.test.core.app.ApplicationProvider
 import io.github.camilus123.game4096.core.Direction
 import android.os.Looper
 import android.os.SystemClock
+import io.github.camilus123.game4096.audio.GameAudio
+import io.github.camilus123.game4096.audio.MusicTrack
+import io.github.camilus123.game4096.audio.Sfx
 import io.github.camilus123.game4096.core.Difficulty
+import io.github.camilus123.game4096.data.ThemeChoice
 import io.github.camilus123.game4096.core.EndReason
 import io.github.camilus123.game4096.core.Outcome
 import io.github.camilus123.game4096.core.VersusConfig
@@ -39,6 +43,26 @@ class GameViewModelTest {
 
     private val app: Application = ApplicationProvider.getApplicationContext()
 
+    /** Records what the game asked the audio to do. */
+    private class RecordingAudio : GameAudio {
+        val effects = ArrayList<Sfx>()
+        val merges = ArrayList<Int>()
+        var track = MusicTrack.NONE
+        var inForeground = false
+        var effectsVolume = -1f
+        var musicVolume = -1f
+        var muted = false
+        override fun play(sfx: Sfx) { effects.add(sfx) }
+        override fun playMerge(exponent: Int) { merges.add(exponent) }
+        override fun setMusic(track: MusicTrack) { this.track = track }
+        override fun setVolumes(effects: Float, music: Float, muted: Boolean) {
+            effectsVolume = effects; musicVolume = music; this.muted = muted
+        }
+        override fun setActive(active: Boolean) { inForeground = active }
+    }
+
+    private val audio = RecordingAudio()
+
     /** Fake time for the Time attack clock; tests move it forward by hand. */
     private var now = 1_000_000L
 
@@ -46,7 +70,7 @@ class GameViewModelTest {
 
     private fun launch(): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage, { now }, Runnable::run)
+        val vm = GameViewModel(app, storage, { now }, Runnable::run, audio)
         vm.setForeground(true)
         return vm to storage
     }
@@ -375,7 +399,7 @@ class GameViewModelTest {
     /** As [launch], but on Robolectric's clock, so the opponent's pauses pass when the looper is idled. */
     private fun launchVersus(config: VersusConfig, size: Int = 4): Pair<GameViewModel, Storage> {
         val storage = Storage(app)
-        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run)
+        val vm = GameViewModel(app, storage, SystemClock::uptimeMillis, Runnable::run, audio)
         vm.setForeground(true)
         vm.selectGrid(size)
         vm.selectMode(Mode.VERSUS)
@@ -463,7 +487,7 @@ class GameViewModelTest {
         storage.flush()
 
         val storage2 = Storage(app)
-        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run)
+        val again = GameViewModel(app, storage2, SystemClock::uptimeMillis, Runnable::run, audio)
         assertEquals("a finished match is not reopened", Screen.MENU, again.screen)
         assertEquals(Mode.VERSUS, again.mode)
         assertEquals(easyRace, again.versusConfig)
@@ -502,7 +526,7 @@ class GameViewModelTest {
         assertTrue(botMoves > 0)
         storage.flush()
 
-        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run)
+        val again = GameViewModel(app, Storage(app), SystemClock::uptimeMillis, Runnable::run, audio)
         assertEquals(Screen.GAME, again.screen)
         val match = again.match!!
         assertEquals(config, match.config)
@@ -569,5 +593,104 @@ class GameViewModelTest {
         assertEquals(9, vm.moves)
         assertNull(vm.match)
         assertTrue(storage.scores(classic4).isEmpty)
+    }
+
+    // ---- Audio and settings ------------------------------------------------------------
+
+    @Test fun musicFollowsTheScreenAndTheMode() {
+        val (vm, _) = launch()
+        assertEquals(MusicTrack.MENU, audio.track)
+        vm.play()
+        assertEquals(MusicTrack.GAME, audio.track)
+        vm.showMenu()
+        assertEquals(MusicTrack.MENU, audio.track)
+        vm.selectRules(GameRules.ZEN)
+        vm.play()
+        assertEquals("Zen has its own, calmer track", MusicTrack.ZEN, audio.track)
+        vm.showScores()
+        assertEquals(MusicTrack.ZEN, audio.track) // unchanged until the menu is shown
+        vm.showMenu()
+        vm.selectMode(Mode.VERSUS)
+        vm.play()
+        assertEquals(MusicTrack.GAME, audio.track)
+    }
+
+    @Test fun aMoveSlidesThenPlaysTheMergeForTheBiggestNewTile() {
+        val (vm, _) = launch()
+        vm.play()
+        audio.effects.clear()
+        val g = vm.game!!
+        // Play until a move merges something, checking each move's sounds.
+        var checkedMerge = false
+        var checkedPlain = false
+        var i = 0
+        while (!(checkedMerge && checkedPlain) && !g.isOver) {
+            audio.effects.clear(); audio.merges.clear()
+            if (g.move(Direction.entries[i++ % 4]) < 0) continue
+            vm.onMoved()
+            assertEquals(listOf(Sfx.SLIDE), audio.effects)
+            assertTrue("the merge waits for the tiles to arrive", audio.merges.isEmpty())
+            looper.idleFor(Duration.ofMillis(200))
+            var biggest = 0
+            for (c in 0 until g.cellCount) if (g.lastTrace.merged[c]) biggest = maxOf(biggest, g.exponentAt(c))
+            if (biggest > 0) {
+                assertEquals(listOf(biggest), audio.merges)
+                assertEquals(listOf(Sfx.SLIDE), audio.effects)
+                checkedMerge = true
+            } else {
+                assertTrue(audio.merges.isEmpty())
+                assertEquals(listOf(Sfx.SLIDE, Sfx.SPAWN), audio.effects)
+                checkedPlain = true
+            }
+        }
+        assertTrue(checkedMerge && checkedPlain)
+    }
+
+    @Test fun gameOverAndWinAreAnnouncedOnceAndNotOnReopening() {
+        val (vm, storage) = launch()
+        vm.selectRules(GameRules.ZEN)
+        vm.play()
+        playToTheEnd(vm)
+        assertEquals(1, audio.effects.count { it == Sfx.OVER })
+        storage.flush()
+
+        val second = RecordingAudio()
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second)
+        assertEquals(SessionStatus.STUCK, again.status)
+        assertTrue("reopening a stuck game is silent", second.effects.none { it == Sfx.OVER })
+        again.undo()
+        assertTrue(second.effects.contains(Sfx.UNDO))
+    }
+
+    @Test fun settingsAreAppliedAndRemembered() {
+        val (vm, _) = launch()
+        assertEquals(0.8f, audio.effectsVolume)
+        assertEquals(0.5f, audio.musicVolume)
+        assertFalse(audio.muted)
+        assertTrue(vm.settings.haptics)
+
+        vm.updateSettings(vm.settings.copy(effectsVolume = 0.25f, musicVolume = 0f, muted = true, haptics = false, theme = ThemeChoice.DARK))
+        assertEquals(0.25f, audio.effectsVolume)
+        assertEquals(0f, audio.musicVolume)
+        assertTrue(audio.muted)
+
+        val second = RecordingAudio()
+        val again = GameViewModel(app, Storage(app), { now }, Runnable::run, second)
+        assertEquals(0.25f, again.settings.effectsVolume)
+        assertEquals(0f, again.settings.musicVolume)
+        assertTrue(again.settings.muted)
+        assertFalse(again.settings.haptics)
+        assertEquals(ThemeChoice.DARK, again.settings.theme)
+        assertTrue("the saved volumes reach the audio at start-up", second.muted)
+        assertEquals(0.25f, second.effectsVolume)
+    }
+
+    @Test fun audioGoesQuietInTheBackground() {
+        val (vm, _) = launch()
+        assertTrue(audio.inForeground)
+        vm.setForeground(false)
+        assertFalse(audio.inForeground)
+        vm.setForeground(true)
+        assertTrue(audio.inForeground)
     }
 }

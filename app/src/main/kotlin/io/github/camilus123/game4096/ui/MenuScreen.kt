@@ -144,13 +144,23 @@ fun MenuScreen(vm: GameViewModel) {
             )
         }
         Spacer(Modifier.height(12.dp))
-        QuietButton(
-            onClick = vm::showScores,
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(52.dp),
-        ) {
-            Text(text = stringResource(R.string.high_scores), fontSize = 17.sp)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            QuietButton(
+                onClick = vm::showScores,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+            ) {
+                Text(text = stringResource(R.string.high_scores), fontSize = 16.sp, maxLines = 1)
+            }
+            QuietButton(
+                onClick = vm::showSettings,
+                modifier = Modifier
+                    .weight(1f)
+                    .height(52.dp),
+            ) {
+                Text(text = stringResource(R.string.settings), fontSize = 16.sp, maxLines = 1)
+            }
         }
     }
 }

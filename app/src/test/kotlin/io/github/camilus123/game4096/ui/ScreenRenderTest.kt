@@ -172,5 +172,9 @@ class ScreenRenderTest {
         vm.showMenu()
         vm.showScores()
         capture(activity, "$prefix-scores-versus")
+        vm.showMenu()
+        capture(activity, "$prefix-menu-final")
+        vm.showSettings()
+        capture(activity, "$prefix-settings")
     }
 }

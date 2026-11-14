@@ -6,6 +6,7 @@ import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Typeface
 import android.view.Choreographer
+import android.view.HapticFeedbackConstants
 import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
@@ -44,6 +45,9 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     var moveGate: (() -> Boolean)? = null
 
     var inputEnabled: Boolean = true
+
+    /** A light tap from the phone when tiles merge. Needs no permission. */
+    var haptics: Boolean = false
 
     /** False for the opponent's board in Versus: it only shows moves, it takes no input. */
     var interactive: Boolean = true
@@ -258,6 +262,15 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         spawnIndex = g.lastSpawnIndex
         intro = false
         startAnimation()
+        if (haptics) {
+            var biggest = 0
+            for (i in 0 until n) if (merged[i] && cur[i] > biggest) biggest = cur[i]
+            if (biggest >= BIG_MERGE_EXPONENT) {
+                performHapticFeedback(HapticFeedbackConstants.CONTEXT_CLICK)
+            } else if (biggest > 0) {
+                performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+            }
+        }
         onMoved?.invoke()
         return true
     }
@@ -427,6 +440,9 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         const val SLIDE_MS = 110f
         const val POP_MS = 143f
         const val MAX_DIGITS = 7
+
+        /** Merges that make 128 or more get a firmer tap. */
+        const val BIG_MERGE_EXPONENT = 7
 
         val DIRECTIONS = Direction.entries.toTypedArray()
 

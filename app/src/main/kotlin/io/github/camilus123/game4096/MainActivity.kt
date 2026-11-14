@@ -1,12 +1,19 @@
 package io.github.camilus123.game4096
 
+import android.content.Context
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import io.github.camilus123.game4096.data.Languages
 import io.github.camilus123.game4096.ui.App
 
 class MainActivity : ComponentActivity() {
+
+    override fun attachBaseContext(newBase: Context) {
+        // Before Android 13 the in-app language choice is applied here.
+        super.attachBaseContext(Languages.wrap(newBase))
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)

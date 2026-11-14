@@ -158,6 +158,31 @@ class Storage(context: Context) {
             session.edit().putString(KEY_RULES, value).apply()
         }
 
+    // ---- Settings ----------------------------------------------------------------------
+
+    private val settingsPrefs = appContext.getSharedPreferences("settings", Context.MODE_PRIVATE)
+
+    fun loadSettings(): Settings {
+        val d = Settings()
+        return Settings(
+            effectsVolume = settingsPrefs.getFloat("effects_volume", d.effectsVolume).coerceIn(0f, 1f),
+            musicVolume = settingsPrefs.getFloat("music_volume", d.musicVolume).coerceIn(0f, 1f),
+            muted = settingsPrefs.getBoolean("muted", d.muted),
+            haptics = settingsPrefs.getBoolean("haptics", d.haptics),
+            theme = ThemeChoice.parse(settingsPrefs.getString("theme", null)),
+        )
+    }
+
+    fun saveSettings(s: Settings) {
+        settingsPrefs.edit()
+            .putFloat("effects_volume", s.effectsVolume)
+            .putFloat("music_volume", s.musicVolume)
+            .putBoolean("muted", s.muted)
+            .putBoolean("haptics", s.haptics)
+            .putString("theme", s.theme.id)
+            .apply()
+    }
+
     /** Blocks until every queued write is on disk. For tests and for leaving the app. */
     fun flush() {
         io.submit {}.get(5, TimeUnit.SECONDS)

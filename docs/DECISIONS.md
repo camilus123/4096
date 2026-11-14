@@ -93,3 +93,20 @@ Choices confirmed by the owner, and choices made where the build brief was silen
 - **The opponent's strength was set by simulation**, not by feel; see README for typical
   results. On 5x5 and 6x6 every level survives far longer than on 4x4 (so does a human), so
   "Last standing" on the big grids can be a very long match.
+- **Audio is generated ahead of time and committed** (the brief's recommended approach),
+  as OGG Vorbis: stereo music at quality 2, mono effects at quality 4.
+- **Twelve separate merge sounds** rather than one sample played at different speeds, so
+  timbre as well as pitch can grow with the tile.
+- **A move plays the slide at once and the merge 95 ms later**, when the tiles arrive.
+  Several merges in one move play only the biggest. With no merge, the new tile's blip
+  plays instead.
+- **The opponent's moves in Versus are silent.** Two boards' worth of effects would be noise.
+- **Music is off the moment its volume is 0 or everything is muted**, and audio focus is
+  then released, so the player's own music or podcast is left alone.
+- **Default volumes: effects 80, music 50.**
+- **Vibration uses the view's haptic feedback**, which needs no permission. Merges that make
+  128 or more get a firmer tap.
+- **Language: on Android 13+ the in-app choice is the system's per-app language** and the
+  game is listed under the phone's app language settings. On Android 8 to 12 the choice is
+  stored by the app and applied at start-up.
+- **Theme choice (System / Light / Dark) is in settings**; status bar icons follow it.

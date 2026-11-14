@@ -10,6 +10,10 @@ import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.AndroidViewModel
+import io.github.camilus123.game4096.audio.AudioEngine
+import io.github.camilus123.game4096.audio.GameAudio
+import io.github.camilus123.game4096.audio.MusicTrack
+import io.github.camilus123.game4096.audio.Sfx
 import io.github.camilus123.game4096.core.Bot
 import io.github.camilus123.game4096.core.Direction
 import io.github.camilus123.game4096.core.EndReason
@@ -25,11 +29,12 @@ import io.github.camilus123.game4096.core.VersusConfig
 import io.github.camilus123.game4096.core.VersusMatch
 import io.github.camilus123.game4096.core.VersusRecord
 import io.github.camilus123.game4096.data.GameKey
+import io.github.camilus123.game4096.data.Settings
 import io.github.camilus123.game4096.data.Storage
 import java.util.concurrent.Executor
 import java.util.concurrent.Executors
 
-enum class Screen { MENU, GAME, SCORES }
+enum class Screen { MENU, GAME, SCORES, SETTINGS }
 
 /**
  * Holds what is being played (a single-player [Session] or a [VersusMatch]), mirrors it into
@@ -48,6 +53,7 @@ class GameViewModel(
     private val storage: Storage,
     private val clock: () -> Long,
     private val botExecutor: Executor,
+    private val audio: GameAudio,
 ) : AndroidViewModel(application) {
 
     @Suppress("unused") // used by the default ViewModel factory
@@ -56,9 +62,13 @@ class GameViewModel(
         Storage.get(application),
         SystemClock::uptimeMillis,
         Executors.newSingleThreadExecutor { r -> Thread(r, "opponent").apply { priority = Thread.NORM_PRIORITY - 1 } },
+        AudioEngine.get(application),
     )
 
     var screen by mutableStateOf(Screen.MENU)
+        private set
+
+    var settings by mutableStateOf(storage.loadSettings())
         private set
 
     // ---- Menu choices --------------------------------------------------------------------
@@ -195,15 +205,50 @@ class GameViewModel(
         }
     }
 
+    init {
+        audio.setVolumes(settings.effectsVolume, settings.musicVolume, settings.muted)
+        updateMusic()
+    }
+
+    // ---- Settings ----------------------------------------------------------------------
+
+    /** Applies and saves new settings. [tap] is false for sliders, which change many times per drag. */
+    fun updateSettings(new: Settings, tap: Boolean = true) {
+        settings = new
+        storage.saveSettings(new)
+        audio.setVolumes(new.effectsVolume, new.musicVolume, new.muted)
+        if (tap) audio.play(Sfx.TAP)
+    }
+
+    /** A sample of the effects at the current volume, for the settings screen. */
+    fun previewEffects() = audio.playMerge(5)
+
+    fun showSettings() {
+        audio.play(Sfx.TAP)
+        screen = Screen.SETTINGS
+    }
+
+    private fun updateMusic() {
+        audio.setMusic(
+            when {
+                screen != Screen.GAME -> MusicTrack.MENU
+                session?.rules?.mode == Mode.ZEN -> MusicTrack.ZEN
+                else -> MusicTrack.GAME
+            },
+        )
+    }
+
     // ---- Menu --------------------------------------------------------------------------
 
     fun selectGrid(size: Int) {
+        audio.play(Sfx.TAP)
         gridSize = size
         storage.lastGridSize = size
     }
 
     /** Picks a mode. Time attack and Limited moves start on their middle option. */
     fun selectMode(newMode: Mode) {
+        audio.play(Sfx.TAP)
         if (newMode == Mode.VERSUS) {
             mode = newMode
             storage.lastRulesId = Mode.VERSUS.id
@@ -214,19 +259,22 @@ class GameViewModel(
                     Mode.LIMITED_MOVES -> GameRules(newMode, GameRules.MOVE_VARIANTS[1])
                     else -> GameRules(newMode)
                 },
+                tap = false,
             )
         } else {
-            selectRules(rules)
+            selectRules(rules, tap = false)
         }
     }
 
-    fun selectRules(newRules: GameRules) {
+    fun selectRules(newRules: GameRules, tap: Boolean = true) {
+        if (tap) audio.play(Sfx.TAP)
         rules = newRules
         mode = newRules.mode
         storage.lastRulesId = newRules.id
     }
 
     fun selectVersus(config: VersusConfig) {
+        audio.play(Sfx.TAP)
         versusConfig = config
         storage.lastVersusId = config.id
     }
@@ -244,6 +292,7 @@ class GameViewModel(
 
     /** Continues the saved game for the current menu choices, or starts one. */
     fun play() {
+        audio.play(Sfx.TAP)
         if (mode == Mode.VERSUS) {
             openVersus(gridSize, versusConfig, fresh = false)
         } else {
@@ -253,6 +302,7 @@ class GameViewModel(
 
     /** Starts over with the same settings. An abandoned single-player game is scored first. */
     fun newGame() {
+        audio.play(Sfx.TAP)
         val k = key ?: return
         val m = match
         val s = session
@@ -265,15 +315,18 @@ class GameViewModel(
     }
 
     fun showMenu() {
+        audio.play(Sfx.TAP)
         tick()
         persist()
         cancelBot()
         storage.activeGame = null
         screen = Screen.MENU
         updateTicker()
+        updateMusic()
     }
 
     fun showScores() {
+        audio.play(Sfx.TAP)
         screen = Screen.SCORES
     }
 
@@ -294,6 +347,7 @@ class GameViewModel(
     /** Called by the board after every move that changed it. Not called per frame. */
     fun onMoved() {
         if (!ticking) lastTick = clock() // the first move starts the clock from now
+        moveSounds()
         sync()
         persist()
         updateTicker()
@@ -303,12 +357,14 @@ class GameViewModel(
     fun undo() {
         val s = session ?: return
         if (!s.undo()) return
+        audio.play(Sfx.UNDO)
         boardVersion++
         sync()
         persist()
     }
 
     fun keepPlaying() {
+        audio.play(Sfx.TAP)
         val s = session ?: return
         s.winAcknowledged = true
         sync()
@@ -320,6 +376,7 @@ class GameViewModel(
         if (visible == foreground) return
         tick()
         foreground = visible
+        audio.setActive(visible)
         if (visible) {
             scheduleBot()
         } else {
@@ -335,6 +392,31 @@ class GameViewModel(
         handler.removeCallbacksAndMessages(null)
         onOpponentMoved = null
         super.onCleared()
+    }
+
+    /**
+     * The sounds of the player's move: the slide at once, then the merge (or, with no merge,
+     * the quiet blip of the new tile) timed to land when the tiles arrive on screen.
+     */
+    private fun moveSounds() {
+        val g = game ?: return
+        audio.play(Sfx.SLIDE)
+        var biggest = 0
+        val trace = g.lastTrace
+        for (i in 0 until g.cellCount) {
+            if (trace.merged[i]) {
+                val e = g.exponentAt(i)
+                if (e > biggest) biggest = e
+            }
+        }
+        pendingMerge = biggest
+        handler.removeCallbacks(arrivalSound)
+        handler.postDelayed(arrivalSound, ARRIVAL_SOUND_DELAY_MS)
+    }
+
+    private var pendingMerge = 0
+    private val arrivalSound = Runnable {
+        if (pendingMerge > 0) audio.playMerge(pendingMerge) else audio.play(Sfx.SPAWN)
     }
 
     /** Takes the time since the last call off whichever clock is running. Internal so tests can drive it. */
@@ -422,9 +504,12 @@ class GameViewModel(
         storage.activeGame = k
         screen = Screen.GAME
         boardVersion++
+        opening = true
         sync()
+        opening = false
         persist()
         updateTicker()
+        updateMusic()
     }
 
     // ---- The opponent --------------------------------------------------------------------
@@ -507,9 +592,13 @@ class GameViewModel(
         tableBest = storage.scores(k).best
     }
 
+    /** True while a game is being opened: a restored end state must not replay its fanfare. */
+    private var opening = false
+
     private fun sync() {
         val s = session
         val m = match
+        val wasPlaying = status == SessionStatus.PLAYING && !opening
         if (s != null) {
             val g = s.game
             score = g.score
@@ -521,6 +610,9 @@ class GameViewModel(
             canUndo = s.rules.undoLimit > 0 && g.canUndo
             displayTimeMs = roundForDisplay(s.timeLeftMs)
             outcome = Outcome.UNDECIDED
+            if (wasPlaying && status != SessionStatus.PLAYING) {
+                audio.play(if (status == SessionStatus.WON) Sfx.WIN else Sfx.OVER)
+            }
         } else if (m != null) {
             score = m.player.score
             moves = m.player.moves
@@ -533,6 +625,9 @@ class GameViewModel(
             status = if (m.isDecided) SessionStatus.OVER else SessionStatus.PLAYING
             canUndo = false
             movesLeft = -1
+            if (wasPlaying && status != SessionStatus.PLAYING) {
+                audio.play(if (outcome == Outcome.PLAYER_WON) Sfx.WIN else Sfx.OVER)
+            }
         }
     }
 
@@ -544,5 +639,8 @@ class GameViewModel(
 
     private companion object {
         const val TICK_MS = 50L
+
+        /** A little under the board's slide time, so the sound meets the tiles. */
+        const val ARRIVAL_SOUND_DELAY_MS = 95L
     }
 }

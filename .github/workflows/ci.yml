@@ -29,6 +29,9 @@ jobs:
       - name: Unit tests
         run: ./gradlew :core:test :app:testDebugUnitTest
 
+      - name: Audio generator still runs
+        run: ./gradlew :audiogen:run --args="$PWD/audiogen/build/audio"
+
       - name: Build debug APK
         run: ./gradlew :app:assembleDebug --stacktrace
 
