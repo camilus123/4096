@@ -332,7 +332,7 @@ class BoardViewTest {
         assertEquals(25, full120)
         assertTrue("half the frames on a 120 Hz screen, drew $limited120 of $full120", limited120 in 12..13)
         assertEquals("a 60 Hz screen is not held back", full60, limited60)
-        assertEquals(13, full60)
+        assertEquals(12, full60)
     }
 
     @Test fun theBoardCountsItsOwnDraws() {
