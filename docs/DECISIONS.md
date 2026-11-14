@@ -173,5 +173,20 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   regardless (measured: Galaxy S21 FE), drawing on every other refresh gives 60 fps with up
   to a quarter of frames arriving one refresh late at High. Android offers an app no public
   way to tell the display pipeline "this window runs at 60" short of the mode switch that
-  such phones ignore. Left as is pending the owner's decision; the alternative is to make
-  the limit do nothing on those phones.
+  such phones ignore. **Owner's decision (2026-11-14): keep it as it is** and document it;
+  it is listed under Known issues in the README.
+
+## Release build (milestone 8)
+
+- **Signing key comes from environment variables / repository secrets**, never from a file
+  in the repository. Alias fixed at `key4096`, key password equal to the keystore password,
+  so only two secrets are needed.
+- **A release build without the key is signed with the debug key**, so it can still be
+  installed and tried. CI names such a build `-TEST-KEY` and will not publish it.
+- **Publishing is by tag**: pushing `v*` creates a GitHub Release with the signed APK.
+- **Baseline profile written by hand** (all of the game's own code), because recording one
+  needs a device or emulator this project's build machine does not have. Jetpack Compose's
+  own profile is merged in by the build.
+- **Switching from the test builds to the first properly signed build needs one uninstall**,
+  which clears saved games and scores. There is no way round it: Android will not install
+  an APK over one signed with a different key.

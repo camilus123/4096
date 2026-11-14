@@ -1,0 +1,8 @@
+# Baseline profile: tells Android which code to compile ahead of time when the app is
+# installed, instead of interpreting it on first use. Covers all of the game's own code, the
+# board's drawing and input path first of all. (Jetpack Compose ships its own profile, which
+# the build merges with this one.)
+#
+# Written by hand. A generated profile would need a device to record on; see the README.
+HSPLio/github/camilus123/game4096/**->**(**)**
+Lio/github/camilus123/game4096/**;

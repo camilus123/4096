@@ -3,6 +3,7 @@ name: CI
 on:
   push:
     branches: [main]
+    tags: ['v*']
   pull_request:
 
 permissions:
@@ -16,6 +17,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    outputs:
+      signed: ${{ steps.key.outputs.signed }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,10 +35,40 @@ jobs:
       - name: Audio generator still runs
         run: ./gradlew :audiogen:run --args="$PWD/audiogen/build/audio"
 
-      - name: Build debug APK
-        run: ./gradlew :app:assembleDebug --stacktrace
+      # The release key comes from repository secrets and exists only for the length of this job.
+      - name: Prepare release key
+        id: key
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+        run: |
+          if [ -n "$KEYSTORE_BASE64" ]; then
+            echo "$KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/release.keystore"
+            echo "KEYSTORE_FILE=$RUNNER_TEMP/release.keystore" >> "$GITHUB_ENV"
+            echo "signed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "No KEYSTORE_BASE64 secret: the release build will be signed with a throwaway debug key."
+            echo "signed=false" >> "$GITHUB_OUTPUT"
+          fi
 
-      - name: Upload APK
+      - name: Build APKs
+        env:
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        run: ./gradlew :app:assembleDebug :app:assembleRelease --stacktrace
+
+      - name: Name the release APK
+        run: |
+          version=$(grep -oP 'versionName = "\K[^"]+' app/build.gradle.kts)
+          suffix=""; [ "${{ steps.key.outputs.signed }}" = "true" ] || suffix="-TEST-KEY"
+          cp app/build/outputs/apk/release/app-release.apk "4096-$version$suffix.apk"
+
+      - name: Upload release APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: 4096-release-apk
+          path: 4096-*.apk
+          if-no-files-found: error
+
+      - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: 4096-debug-apk
@@ -61,3 +94,26 @@ jobs:
             **/build/reports/tests/
             **/build/test-results/
           if-no-files-found: ignore
+
+  # Pushing a tag such as v1.0.0 publishes the signed APK on the repository's Releases page.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Refuse to publish an APK signed with a throwaway key
+        if: needs.build.outputs.signed != 'true'
+        run: |
+          echo "::error::The KEYSTORE_BASE64 and KEYSTORE_PASSWORD secrets are not set, so there is no properly signed APK to publish."
+          exit 1
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: 4096-release-apk
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release create "${{ github.ref_name }}" 4096-*.apk --repo "${{ github.repository }}" --title "4096 ${{ github.ref_name }}" --generate-notes

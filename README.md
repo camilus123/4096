@@ -3,9 +3,9 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: milestone 7 of 8.** All five modes, audio, settings, three quality levels plus
-Auto, a 60 fps limiter and an in-app performance test. What remains is the signed release
-build and final polish.
+**Status: feature-complete (milestone 8 of 8 in progress).** Everything in the build brief
+exists. What is left is the owner's release key, so that Actions can publish a properly
+signed APK, and a first run of the optimised release build on a phone.
 
 | Milestone | State |
 |---|---|
@@ -15,8 +15,23 @@ build and final polish.
 | 4. Zen, Time attack, Limited moves | done |
 | 5. Versus AI | done |
 | 6. Audio | done |
-| 7. Quality levels and performance tuning | done |
-| 8. Polish and release build | next |
+| 7. Quality levels and performance tuning | done, measured on two phones (see Performance) |
+| 8. Polish and release build | release build and signing in place; waiting for the key |
+
+## Known issues
+
+- **The 60 fps limit is uneven on phones that will not switch their screen to 60 Hz.** The
+  limit first asks the phone for a 60 Hz mode. Where the phone agrees (measured: Xiaomi 17T)
+  it works cleanly. Where it does not (measured: Galaxy S21 FE) the board draws on every
+  other refresh instead, which halves the work but leaves up to a quarter of frames, at
+  High quality, arriving one refresh (about 8 ms) late. If motion looks slightly uneven with
+  the limit on, turn it off or lower the quality level. Details under Performance.
+- **The frame-rate target has not been shown on a mid-range phone.** Both phones measured
+  are faster than the 3 to 4 GB reference device.
+- **The audio has only been judged by the owner's ear on one phone**, and the in-memory
+  music player has not been tried on Android 8 to 12.
+- **The baseline profile is written by hand**, not recorded on a device, and its effect on
+  start-up time has not been measured.
 
 ## Building
 
@@ -24,17 +39,35 @@ Requires JDK 17 or newer and the Android SDK (platform 36). The Gradle wrapper d
 everything else.
 
 ```
-./gradlew test                 # rules tests and board-view tests
-./gradlew :app:assembleDebug   # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :core:test :app:testDebugUnitTest   # rules tests and app tests
+./gradlew :app:assembleDebug                  # app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease                # optimised with R8, about 2.8 MB
 ```
 
-Every push to `main` runs the tests and builds the APK in GitHub Actions
-(`.github/workflows/ci.yml`). To get a build without a development setup, open the latest run
-under the repository's **Actions** tab and download the `4096-debug-apk` artifact.
+Every push to `main` runs the tests and builds both APKs in GitHub Actions
+(`.github/workflows/ci.yml`); they are attached to the run as artifacts.
 
-Debug builds are signed with a throwaway key that differs between CI runs, so Android refuses
-to install one over another: uninstall the old build first. A stable signing key comes with
-the release build in milestone 8.
+## Releases and signing
+
+Android only installs an update over an app signed with the same key, so releases need one
+permanent key. It is never stored in this repository.
+
+- The key lives in two repository secrets: `KEYSTORE_BASE64` (the keystore file, base64
+  encoded) and `KEYSTORE_PASSWORD`. The build expects the key under the alias `key4096`.
+- With the secrets set, every Actions run signs the release APK with that key, and pushing
+  a tag such as `v1.0.0` publishes it on the repository's Releases page.
+- Without them, the release APK is signed with a throwaway key and named `...-TEST-KEY.apk`,
+  and the tag job refuses to publish.
+- To sign on your own machine, set `KEYSTORE_FILE` and `KEYSTORE_PASSWORD` in the
+  environment before `./gradlew :app:assembleRelease`.
+
+**Keep a copy of the keystore file and its password somewhere safe.** If they are lost, no
+future version can update an installed copy; players would have to uninstall first and lose
+their saved games and scores.
+
+The release build is shrunk and optimised with R8 and carries a baseline profile
+(`app/src/main/baseline-prof.txt`) that lets Android compile the game's own code ahead of
+time.
 
 ## Architecture
 
