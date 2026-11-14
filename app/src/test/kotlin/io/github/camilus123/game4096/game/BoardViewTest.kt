@@ -344,4 +344,26 @@ class BoardViewTest {
         render(view, "count-scratch")
         assertEquals(before + 2, view.drawCount)
     }
+
+    @Test fun driftingLightsAreInvisibleAtTheEdgeWhereTheyWrapAround() {
+        val w = 1000f
+        val h = 1600f
+        val r = 100f
+        // At any edge, which is where a light jumps to the opposite side, it cannot be seen.
+        for (pos in listOf(0f to 800f, 1000f to 800f, 500f to 0f, 500f to 1600f, 0f to 0f)) {
+            assertEquals(0f, BoardView.edgeFade(pos.first, pos.second, w, h, r), 0f)
+        }
+        assertEquals("fully visible well inside", 1f, BoardView.edgeFade(500f, 800f, w, h, r), 0f)
+        assertEquals(1f, BoardView.edgeFade(150f, 800f, w, h, r), 0f)
+        // In between it changes gradually, with no jump from one frame to the next.
+        var previous = 0f
+        var x = 0f
+        while (x <= 150f) {
+            val f = BoardView.edgeFade(x, 800f, w, h, r)
+            assertTrue("fade never steps back", f >= previous)
+            assertTrue("fade moves in small steps, jumped ${f - previous} at $x", f - previous < 0.02f)
+            previous = f
+            x += 1f
+        }
+    }
 }

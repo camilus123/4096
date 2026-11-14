@@ -629,20 +629,31 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
         }
     }
 
-    /** High: a handful of large, faint lights drifting slowly behind the board. */
+    /**
+     * High: a handful of large, faint lights drifting slowly behind the board.
+     *
+     * A light fades out as it nears the edge of this view and is invisible by the time its
+     * centre gets there, so it never pops in or out and never shows a cut edge. Each one
+     * wraps round to the opposite side while it is invisible. Drawing is clipped to the view,
+     * because inside Compose a view may otherwise paint over its neighbours (the score boxes).
+     */
     private fun drawMotes(canvas: Canvas, p: BoardPalette) {
         val w = width.toFloat()
         val h = height.toFloat()
         val t = ambientSeconds
+        canvas.save()
+        canvas.clipRect(0f, 0f, w, h)
         for (k in 0 until MOTES) {
-            // Fixed, different speed and path per light; positions wrap around the view.
-            val fx = fraction(MOTE_SEED_X[k] + t * MOTE_SPEED_X[k])
-            val fy = fraction(MOTE_SEED_Y[k] + t * MOTE_SPEED_Y[k])
+            // Fixed, different speed and path per light.
             val radius = density * (30f + 30f * MOTE_SEED_Y[k])
-            val alpha = (p.moteAlpha * (0.65f + 0.35f * sin(t * 0.7f + k))).toInt()
-            fill.color = (alpha shl 24) or p.mote
-            canvas.drawCircle(fx * (w + 2f * radius) - radius, fy * (h + 2f * radius) - radius, radius, fill)
+            val x = fraction(MOTE_SEED_X[k] + t * MOTE_SPEED_X[k]) * w
+            val y = fraction(MOTE_SEED_Y[k] + t * MOTE_SPEED_Y[k]) * h
+            val alpha = p.moteAlpha * (0.65f + 0.35f * sin(t * 0.7f + k)) * edgeFade(x, y, w, h, radius)
+            if (alpha < 1f) continue
+            fill.color = (alpha.toInt() shl 24) or p.mote
+            canvas.drawCircle(x, y, radius, fill)
         }
+        canvas.restore()
     }
 
     private fun fraction(v: Float): Float {
@@ -662,6 +673,16 @@ class BoardView(context: Context) : View(context), Choreographer.FrameCallback {
     }
 
     companion object {
+        /**
+         * How visible a light centred at ([x], [y]) is in a view of [w] by [h]: 1 when it is at
+         * least 1.5 radii from every edge, falling smoothly to 0 at the edge itself.
+         */
+        internal fun edgeFade(x: Float, y: Float, w: Float, h: Float, radius: Float): Float {
+            val nearest = min(min(x, w - x), min(y, h - y))
+            val f = (nearest / (1.5f * radius)).coerceIn(0f, 1f)
+            return f * f * (3f - 2f * f) // smoothstep: no visible start or end to the fade
+        }
+
         /**
          * Switch for High quality's never-ending ambient motion. Always true in the app. Tests
          * turn it off, because a test framework that runs the main thread "until nothing is

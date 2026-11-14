@@ -164,3 +164,8 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   only 2% per tile. Big merges stand out by being longer and richer.
 - **Confirmed on the owner's Xiaomi: the system reports every frame twice** (120 counted
   frames plus 120 duplicate reports per second at 120 Hz). The de-duplication is needed.
+- **The drifting lights fade out towards the edge of the board's area** and wrap round
+  while invisible. The first version wrapped them once they had left the view, but inside
+  Compose the view is not clipped, so they were still on screen (over the header) at that
+  moment and visibly popped. They are now also clipped to the view, so they no longer pass
+  over the score boxes.
