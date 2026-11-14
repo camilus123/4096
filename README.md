@@ -54,8 +54,10 @@ permanent key. It is never stored in this repository.
 
 - The key lives in two repository secrets: `KEYSTORE_BASE64` (the keystore file, base64
   encoded) and `KEYSTORE_PASSWORD`. The build expects the key under the alias `key4096`.
-- With the secrets set, every Actions run signs the release APK with that key, and pushing
-  a tag such as `v1.0.0` publishes it on the repository's Releases page.
+- With the secrets set, every Actions run signs the release APK with that key.
+- To publish a version, create a tag named like `v1.0.0`: either `git tag v1.0.0` and
+  `git push origin v1.0.0`, or on the website Releases > Draft a new release, type the new
+  tag, and publish. Actions then attaches the signed APK to that release a few minutes later.
 - Without them, the release APK is signed with a throwaway key and named `...-TEST-KEY.apk`,
   and the tag job refuses to publish.
 - To sign on your own machine, set `KEYSTORE_FILE` and `KEYSTORE_PASSWORD` in the
