@@ -169,3 +169,9 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   Compose the view is not clipped, so they were still on screen (over the header) at that
   moment and visibly popped. They are now also clipped to the view, so they no longer pass
   over the score boxes.
+- **Known limitation of the 60 fps limit:** on a phone that keeps its screen at 120 Hz
+  regardless (measured: Galaxy S21 FE), drawing on every other refresh gives 60 fps with up
+  to a quarter of frames arriving one refresh late at High. Android offers an app no public
+  way to tell the display pipeline "this window runs at 60" short of the mode switch that
+  such phones ignore. Left as is pending the owner's decision; the alternative is to make
+  the limit do nothing on those phones.

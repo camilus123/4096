@@ -133,8 +133,17 @@ What these do and do not show:
   second on a 120 Hz screen. Version 0.7.1 ignores the duplicate reports and counts drawn
   frames directly; re-run on the Xiaomi it measured 120 fps at 120 Hz and 60 fps with the
   limiter on, 0.0% late at every level, with medians of 5.8 to 6.2 ms and 10.3 to 10.9 ms.
-- The S21 FE did not switch to 60 Hz when the limiter asked, so its second run is also at
-  120 Hz. Later versions additionally make the board draw on every other refresh.
+- The S21 FE did not switch to 60 Hz when the limiter asked, so its second run above is
+  also at 120 Hz. From 0.7.1 the board additionally draws on every other refresh.
+- S21 FE re-run on 0.7.3: 119 to 120 fps at 120 Hz with 0.3 to 0.4% late at every level,
+  and no duplicate reports (those are specific to the Xiaomi).
+- S21 FE on 0.7.3 with the limiter on (screen still at 120 Hz, board drawing every other
+  refresh): 62 fps, medians of 6.5 to 7.2 ms, but 7.0% (Low), 10.6% (Medium) and 26.9%
+  (High) of frames judged late. Frame times are no worse than without the limiter; the
+  system holds these frames to a one-refresh deadline and the slower ones land one 120 Hz
+  refresh (8 ms) later than intended. **So on a phone that refuses to switch to 60 Hz, the
+  limiter halves the drawing work but its 60 fps is not evenly paced.** On the Xiaomi, which
+  does switch, the limiter measured 0.0% late.
 
 ## Audio
 
