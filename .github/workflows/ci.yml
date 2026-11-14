@@ -61,6 +61,12 @@ jobs:
           suffix=""; [ "${{ steps.key.outputs.signed }}" = "true" ] || suffix="-TEST-KEY"
           cp app/build/outputs/apk/release/app-release.apk "4096-$version$suffix.apk"
 
+      # The certificate is public information; printing it shows which key signed this build.
+      - name: Show who signed the release APK
+        run: |
+          apksigner="$(ls -d "$ANDROID_HOME"/build-tools/*/ | sort -V | tail -1)apksigner"
+          "$apksigner" verify --print-certs 4096-*.apk | grep -E "certificate (DN|SHA-256)"
+
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:

@@ -14,8 +14,8 @@ android {
         applicationId = "io.github.camilus123.game4096"
         minSdk = 26
         targetSdk = 36
-        versionCode = 14
-        versionName = "0.8.0"
+        versionCode = 100
+        versionName = "1.0.0"
     }
 
     // The release key never lives in the repository. A build finds it through environment

@@ -3,9 +3,9 @@
 A 2048-style puzzle game for Android: 4x4, 5x5 and 6x6 grids, five modes (Classic, Zen,
 Time attack, Limited moves, Versus AI), generated audio, no ads, no analytics, no network.
 
-**Status: feature-complete (milestone 8 of 8 in progress).** Everything in the build brief
-exists. What is left is the owner's release key, so that Actions can publish a properly
-signed APK, and a first run of the optimised release build on a phone.
+**Status: version 1.0.0.** Everything in the build brief exists, the optimised release build
+has been run on a phone by the owner, and releases are signed with the owner's key and
+published on the repository's Releases page.
 
 | Milestone | State |
 |---|---|
@@ -15,8 +15,8 @@ signed APK, and a first run of the optimised release build on a phone.
 | 4. Zen, Time attack, Limited moves | done |
 | 5. Versus AI | done |
 | 6. Audio | done |
-| 7. Quality levels and performance tuning | done, measured on two phones (see Performance) |
-| 8. Polish and release build | release build and signing in place; waiting for the key |
+| 7. Quality levels and performance tuning | done, measured on four phones (see Performance) |
+| 8. Polish and release build | done |
 
 ## Known issues
 
@@ -26,8 +26,8 @@ signed APK, and a first run of the optimised release build on a phone.
   other refresh instead, which halves the work but leaves up to a quarter of frames, at
   High quality, arriving one refresh (about 8 ms) late. If motion looks slightly uneven with
   the limit on, turn it off or lower the quality level. Details under Performance.
-- **The frame-rate target has not been shown on a mid-range phone.** Both phones measured
-  are faster than the 3 to 4 GB reference device.
+- **120 fps has only been measured on fast phones.** 60 and 90 fps held on mid-range and
+  entry-level phones; no mid-range phone with a 120 Hz screen was available.
 - **The audio has only been judged by the owner's ear on one phone**, and the in-memory
   music player has not been tried on Android 8 to 12.
 - **The baseline profile is written by hand**, not recorded on a device, and its effect on
@@ -156,12 +156,31 @@ frame, which includes waiting in the display pipeline, so they are not the cost 
 | | | Medium | 4.8 ms | 12.3 ms | 23.6 ms | 0.3% |
 | | | High | 5.6 ms | 9.3 ms | 15.9 ms | 0.1% |
 
+Mid-range and entry-level phones, measured by the owner later the same day:
+
+| Device | Screen | Level | fps | Median | p99 | Worst | Late |
+|---|---|---|---|---|---|---|---|
+| Samsung Galaxy A52 (SM-A525F), Android 14, version 0.7.1 | 60 Hz | Low | 60 | 12.6 ms | 28.3 ms | 37.9 ms | 0.2% |
+| | | Medium | 60 | 12.6 ms | 27.3 ms | 37.6 ms | 0.2% |
+| | | High | 60 | 13.5 ms | 26.4 ms | 32.7 ms | 0.2% |
+| Xiaomi Redmi A3 (23129RN51X), Android 16, version 0.8.0 | 90 Hz | Low | 90 | 11.3 ms | 20.7 ms | 29.3 ms | 0.1% |
+| | | Medium | 90 | 10.6 ms | 18.9 ms | 27.2 ms | 0.0% |
+| | | High | 90 | 11.7 ms | 24.1 ms | 46.9 ms | 0.0% |
+| | 60 Hz (limiter on) | Low | 60 | 13.4 ms | 20.8 ms | 26.0 ms | 0.2% |
+| | | Medium | 60 | 13.9 ms | 20.8 ms | 31.1 ms | 0.0% |
+| | | High | 60 | 14.2 ms | 20.3 ms | 23.6 ms | 0.0% |
+
 What these do and do not show:
 
-- Both phones held their refresh rate with at most 0.8% of frames late, at every level.
-- Neither is the reference device. The Xiaomi 17T is a current high-end phone and the
-  S21 FE was an upper mid-range phone with a flagship processor when new. **Nothing has been
-  measured on a 3 to 4 GB mid-range phone, so the target is not yet shown to be met there.**
+- **60 Hz: target met on the phones tried.** A 2021 mid-range phone and an entry-level
+  phone both held 60 fps with at most 0.2% of frames late, at every quality level.
+- **90 Hz: held on the entry-level phone** (90 fps, at most 0.1% late).
+- **120 Hz: held on two fast phones** (Xiaomi 17T, Galaxy S21 FE) with at most 0.8% late.
+  **No mid-range phone with a 120 Hz screen has been measured**, so that half of the target
+  is shown only on stronger hardware.
+- Every run is ten seconds of scripted play on one unit of each phone. It is evidence, not
+  a guarantee across devices, temperatures or long sessions.
+- The Redmi A3 switched to 60 Hz when the limiter asked, and paced evenly there.
 - In version 0.7.0 the Xiaomi reported every frame twice, so its frame counts read 240 per
   second on a 120 Hz screen. Version 0.7.1 ignores the duplicate reports and counts drawn
   frames directly; re-run on the Xiaomi it measured 120 fps at 120 Hz and 60 fps with the
