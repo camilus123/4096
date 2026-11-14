@@ -130,8 +130,9 @@ What these do and do not show:
   S21 FE was an upper mid-range phone with a flagship processor when new. **Nothing has been
   measured on a 3 to 4 GB mid-range phone, so the target is not yet shown to be met there.**
 - In version 0.7.0 the Xiaomi reported every frame twice, so its frame counts read 240 per
-  second on a 120 Hz screen; the timings above are not affected. Later versions ignore the
-  duplicate reports and count drawn frames directly.
+  second on a 120 Hz screen. Version 0.7.1 ignores the duplicate reports and counts drawn
+  frames directly; re-run on the Xiaomi it measured 120 fps at 120 Hz and 60 fps with the
+  limiter on, 0.0% late at every level, with medians of 5.8 to 6.2 ms and 10.3 to 10.9 ms.
 - The S21 FE did not switch to 60 Hz when the limiter asked, so its second run is also at
   120 Hz. Later versions additionally make the board draw on every other refresh.
 
@@ -154,7 +155,9 @@ What is generated:
 
 - **Effects:** tile slide, new tile, button tap, undo, win, game over, and twelve merge
   sounds, one per tile from 4 to 8192. Each bigger tile is a step higher on a pentatonic
-  scale; from 128 an octave joins in, and from 1024 the note becomes a small rising chord.
+  scale. Merges up to 64 are short soft knocks; from 128 the note rings longer with an
+  octave on top, and from 1024 it becomes a small rising chord. The big ones are matched
+  in loudness to the 64 merge, so they are richer and longer, not louder.
 - **Music:** a menu track (69 s), a gameplay track (77 s) and a calmer Zen track (96 s).
   Each is written into a circular buffer: notes and reverb that run past the end wrap
   around onto the start, so the loop point is part of the music rather than a cut.

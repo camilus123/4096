@@ -21,7 +21,8 @@ fun main(args: Array<String>) {
     sounds["music_zen"] = zenMusic()
     for ((name, sound) in sounds) {
         sound.writeWav(File(dir, "$name.wav"))
-        println("%-14s %6.2f s  peak %.2f  rms %.3f".format(name, sound.length.toDouble() / SAMPLE_RATE, sound.peak(), sound.rms()))
+        val loudness = if (name.startsWith("sfx_")) "  loudness %.3f".format(sound.loudness()) else ""
+        println("%-14s %6.2f s  peak %.2f  rms %.3f%s".format(name, sound.length.toDouble() / SAMPLE_RATE, sound.peak(), sound.rms(), loudness))
     }
     println("Wrote ${sounds.size} files to ${dir.absolutePath}")
 }

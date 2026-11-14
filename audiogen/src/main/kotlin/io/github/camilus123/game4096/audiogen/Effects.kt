@@ -62,8 +62,16 @@ fun mergeEffect(exponent: Int): Stereo {
         out.add(seconds(0.14), seconds(length), 0.55, 0.3) { t -> bell(midiToHz(midi + 12.0), t) }
         out.add(0, seconds(0.5), 0.5, 0.0) { t -> bass(hz / 2.0, t, 0.3) }
     }
-    return out.finish(0.8, wet = 0.16)
+    out.finish(0.8, wet = 0.16)
+    // Big merges ring longer and brighter, which the ear hears as louder at the same sample
+    // level. Bring each one down to the loudness of the largest small merge (the 64 tile), so
+    // a big merge is richer and longer than a small one, not louder.
+    out.scale(minOf(1.0, bigMergeLoudness / out.loudness()))
+    return out
 }
+
+/** The loudness every merge of 128 and up is matched to: that of the merge that makes 64. */
+private val bigMergeLoudness: Double by lazy { mergeEffect(6).loudness() }
 
 /** A new tile appearing: a tiny soft blip. */
 fun spawnEffect(): Stereo {

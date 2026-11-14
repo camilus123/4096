@@ -79,8 +79,7 @@ class AudioEngine(context: Context) : GameAudio {
 
     override fun playMerge(exponent: Int) {
         val index = (exponent - FIRST_MERGE_EXPONENT).coerceIn(0, mergeIds.size - 1)
-        // Small merges happen on nearly every move and stay in the background; big ones are rarer and louder.
-        playSample(mergeIds[index], (0.26f + 0.055f * index).coerceAtMost(0.8f))
+        playSample(mergeIds[index], mergeVolume(index))
     }
 
     private fun playSample(id: Int, volume: Float) {
@@ -466,6 +465,23 @@ class AudioEngine(context: Context) : GameAudio {
     }
 
     companion object {
+        /**
+         * Volume of the merge sound number [index] (0 is the merge that makes 4).
+         *
+         * It climbs from the 4 tile to the 64 tile, so the merges heard on nearly every move
+         * stay in the background. From 128 up it is almost flat: those sounds are already
+         * matched in loudness to the 64 merge by the generator and set themselves apart by
+         * being longer and richer, with only a slight rise per tile.
+         */
+        internal fun mergeVolume(index: Int): Float {
+            val rising = 0.26f + 0.055f * minOf(index, LAST_RISING_MERGE)
+            val extra = maxOf(0, index - LAST_RISING_MERGE)
+            return rising * (1f + 0.02f * extra)
+        }
+
+        /** Index of the merge that makes 64. */
+        private const val LAST_RISING_MERGE = 4
+
         private const val TAG = "AudioEngine"
         private const val MAX_CACHED_TRACKS = 2
         private const val CHUNK_FRAMES = 1024

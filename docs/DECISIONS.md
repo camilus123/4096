@@ -158,3 +158,9 @@ Choices confirmed by the owner, and choices made where the build brief was silen
   is on and the screen is faster than about 64 Hz, which halves the drawing work with even
   pacing. On a 90 Hz screen that gives 45 fps, the nearest even division.
 - **High's glow and drifting lights are stronger** (owner: they were hard to see).
+- **Merges of 128 and up are no louder than the merge that makes 64** (owner: they got too
+  loud). The generator now measures loudness the way the ear does (A-weighted, over 50 ms)
+  and matches every big merge to the 64 merge; playback volume rises from 4 to 64 and then
+  only 2% per tile. Big merges stand out by being longer and richer.
+- **Confirmed on the owner's Xiaomi: the system reports every frame twice** (120 counted
+  frames plus 120 duplicate reports per second at 120 Hz). The de-duplication is needed.

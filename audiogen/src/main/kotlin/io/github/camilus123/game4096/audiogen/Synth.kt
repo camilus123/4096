@@ -60,6 +60,47 @@ class Stereo(val length: Int, val loop: Boolean) {
         return sqrt(sum / (2.0 * length))
     }
 
+    /**
+     * How loud this sounds, as opposed to how big its samples are: the highest level reached
+     * over any 50 ms, measured through an A-weighting filter, which discounts low notes the
+     * way the ear does. Two sounds with the same value here are about equally loud to listen
+     * to, even if one is a dull knock and the other a bright bell.
+     */
+    fun loudness(): Double {
+        // Standard A-weighting filter for 44.1 kHz.
+        val b = doubleArrayOf(0.255741125204258, -0.511482250408516, -0.255741125204258, 1.022964500817032, -0.255741125204258, -0.511482250408516, 0.255741125204258)
+        val a = doubleArrayOf(1.0, -4.019576181115832, 6.189406442920694, -4.453198903544116, 1.420842949621876, -0.141825473830304, 0.004351177233495)
+        val x = DoubleArray(length) { (left[it] + right[it]) * 0.5 }
+        val y = DoubleArray(length)
+        for (n in 0 until length) {
+            var acc = 0.0
+            for (k in 0..6) if (n - k >= 0) acc += b[k] * x[n - k]
+            for (k in 1..6) if (n - k >= 0) acc -= a[k] * y[n - k]
+            y[n] = acc
+        }
+        val window = seconds(0.05)
+        val hop = seconds(0.01)
+        var loudest = 0.0
+        var start = 0
+        while (start == 0 || start + window <= length) {
+            var sum = 0.0
+            val end = min(start + window, length)
+            for (i in start until end) sum += y[i] * y[i]
+            loudest = maxOf(loudest, sqrt(sum / (end - start)))
+            start += hop
+        }
+        return loudest
+    }
+
+    /** Scales by [gain]. */
+    fun scale(gain: Double) {
+        val g = gain.toFloat()
+        for (i in 0 until length) {
+            left[i] *= g
+            right[i] *= g
+        }
+    }
+
     /** Scales so the loudest sample sits at [target] (1.0 is full scale). */
     fun normalize(target: Double) {
         val p = peak()

@@ -2,6 +2,7 @@ package io.github.camilus123.game4096.perf
 
 import android.app.Activity
 import android.os.Looper
+import io.github.camilus123.game4096.audio.AudioEngine
 import io.github.camilus123.game4096.game.Quality
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -104,5 +105,15 @@ class FrameMonitorTest {
         assertEquals(Quality.MEDIUM, DeviceClass.classify(false, 3_700_000_000L, 8))
         assertEquals(Quality.HIGH, DeviceClass.classify(false, 7_600_000_000L, 8))
         assertTrue(Quality.HIGH.lower() == Quality.MEDIUM && Quality.MEDIUM.lower() == Quality.LOW && Quality.LOW.lower() == Quality.LOW)
+    }
+
+    @Test fun mergeVolumeClimbsToTheSixtyFourTileThenAlmostLevelsOff() {
+        val v = FloatArray(12) { AudioEngine.mergeVolume(it) } // index 0 is the merge making 4, 4 is 64, 11 is 8192
+        for (i in 1..4) assertTrue("small merges get louder with the tile", v[i] > v[i - 1] + 0.04f)
+        for (i in 5..11) {
+            assertTrue("big merges never get quieter", v[i] > v[i - 1])
+            assertTrue("and barely louder: step ${v[i] - v[i - 1]}", v[i] - v[i - 1] < 0.015f)
+        }
+        assertTrue("8192 is at most 15% above 64, was ${v[11] / v[4]}", v[11] / v[4] < 1.15f)
     }
 }
